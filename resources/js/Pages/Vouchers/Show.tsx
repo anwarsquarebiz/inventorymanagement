@@ -5,9 +5,9 @@ import AppLayout from '@/Layouts/AppLayout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-    ArrowLeft, 
-    Download, 
+import {
+    ArrowLeft,
+    Download,
     Printer,
     Edit as EditIcon,
     Trash2,
@@ -15,9 +15,11 @@ import {
     Package,
     User,
     Clock,
-    RotateCcw
+    RotateCcw,
+    X,
+    ExternalLink
 } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDateOnly } from '@/lib/utils'
 
 interface VoucherItem {
     id: number
@@ -68,17 +70,22 @@ interface Voucher {
 
 interface VoucherShowProps {
     voucher: Voucher
+    backPage?: number | null
+    backSearch?: string | null
 }
 
-export default function Show({ voucher }: VoucherShowProps) {
-    const canApprove = (status: string) => status === 'pending';
-    const canReceive = (status: string) => status === 'approved' || status === 'in_transit';
-    const canReturn = (status: string) => status === 'received';
+export default function Show({ voucher, backPage, backSearch }: VoucherShowProps) {
+    const canVerify = (status: string) => status === 'pending_verification';
+    const canReceive = (status: string) => status === 'in_transit';
+    const canApprove = (status: string) => status === 'under_review';
+    const canReject = (status: string) => status === 'under_review';
+    const canReturn = (status: string) => status === 'in_use';
+    const canComplete = (status: string) => status === 'in_use';
 
-    const handleAction = (voucherId: number, action: 'approve' | 'receive' | 'return') => {
+    const handleAction = (voucherId: number, action: 'approve' | 'receive' | 'return' | 'reject' | 'verify' | 'complete') => {
         router.post(route(`vouchers.${action}`, voucherId), {}, {
-            onSuccess: () => {},
-            onError: () => {},
+            onSuccess: () => { },
+            onError: () => { },
         });
     };
 
@@ -93,17 +100,36 @@ export default function Show({ voucher }: VoucherShowProps) {
 
     const getStatusBadge = (status: string) => {
         const statusMap = {
-            pending: { color: 'bg-yellow-100 hover:bg-yellow-100 text-yellow-800', label: 'Pending' },
-            approved: { color: 'bg-emerald-100 hover:bg-emerald-100 text-emerald-800', label: 'Approved' },
-            in_transit: { color: 'bg-blue-100 hover:bg-blue-100 text-blue-800', label: 'In Transit' },
-            received: { color: 'bg-purple-100 hover:bg-purple-100 text-purple-800', label: 'Received' },
-            returned: { color: 'bg-gray-100 hover:bg-gray-100 text-gray-800', label: 'Returned' },
+            pending_verification: {
+                color: 'bg-yellow-100 hover:bg-yellow-100 text-yellow-800',
+                label: 'Pending Verification',
+            },
+            in_transit: {
+                color: 'bg-blue-100 hover:bg-blue-100 text-blue-800',
+                label: 'In Transit',
+            },
+            under_review: {
+                color: 'bg-emerald-100 hover:bg-emerald-100 text-emerald-800',
+                label: 'Under Review',
+            },
+            in_use: {
+                color: 'bg-purple-100 hover:bg-purple-100 text-purple-800',
+                label: 'In Use',
+            },
+            rejected: {
+                color: 'bg-red-100 hover:bg-red-100 text-red-800',
+                label: 'Rejected',
+            },
+            completed: {
+                color: 'bg-gray-100 hover:bg-gray-100 text-gray-800',
+                label: 'Completed',
+            },
         };
-        
+
         const statusInfo = statusMap[status as keyof typeof statusMap];
         return (
-            <Badge className={statusInfo.color}>
-                {statusInfo.label}
+            <Badge className={statusInfo?.color || 'bg-gray-100 text-gray-800'}>
+                {statusInfo?.label || status}
             </Badge>
         );
     };
@@ -134,7 +160,14 @@ export default function Show({ voucher }: VoucherShowProps) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                        <Link href={route('vouchers.index')}>
+                        <Link
+                            href={route('vouchers.index', {
+                                ...(backPage ? { page: backPage } : {}),
+                                ...(backSearch != null && backSearch !== ''
+                                    ? { search: backSearch }
+                                    : {}),
+                            })}
+                        >
                             <Button variant="outline">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Vouchers
@@ -142,42 +175,76 @@ export default function Show({ voucher }: VoucherShowProps) {
                         </Link>
                         <div>
                             <h1 className="text-2xl font-semibold text-gray-900">Voucher {voucher.voucher_no}</h1>
-                            <p className="text-gray-600">Stock No: {voucher.stock_no}</p>
+                            <p className="text-gray-600 flex items-center">Stock No: <Link href={route('vouchers-groups.show', voucher.stock_no)} className="text-emerald-600 hover:text-emerald-800 flex items-center"><span className="mr-1 ml-1">{voucher.stock_no}</span> <ExternalLink className="h-4 w-4" /></Link></p>
                         </div>
                     </div>
-                    
+
                     <div className="flex space-x-2">
+                        {canVerify(voucher.status) && (
+                            <Button
+                                size="sm"
+                                className="bg-yellow-600 text-white hover:bg-yellow-700"
+                                onClick={() =>
+                                    handleAction(voucher.id, 'verify')}
+                            >
+                                <Check className="mr-1 h-3 w-3" />
+                                Verify
+                            </Button>
+                        )}
+
                         {canApprove(voucher.status) && (
                             <Button
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                onClick={() => handleAction(voucher.id, 'approve')}
+                                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                onClick={() =>
+                                    handleAction(
+                                        voucher.id,
+                                        'approve',
+                                    )
+                                }
                             >
-                                <Check className="h-4 w-4 mr-2" />
+                                <Check className="mr-1 h-3 w-3" />
                                 Approve
+                            </Button>
+                        )}
+
+                        {canReject(voucher.status) && (
+                            <Button
+                                size="sm"
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                onClick={() =>
+                                    handleAction(voucher.id, 'reject')}
+                            >
+                                <X className="mr-1 h-3 w-3" />
+                                Reject
                             </Button>
                         )}
 
                         {canReceive(voucher.status) && (
                             <Button
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                                onClick={() => handleAction(voucher.id, 'receive')}
+                                className="bg-blue-600 text-white hover:bg-blue-700"
+                                onClick={() =>
+                                    handleAction(
+                                        voucher.id,
+                                        'receive',
+                                    )
+                                }
                             >
-                                <Package className="h-4 w-4 mr-2" />
+                                <Package className="mr-1 h-3 w-3" />
                                 Receive
                             </Button>
                         )}
 
-                        {canReturn(voucher.status) && (
+                        {canComplete(voucher.status) && (
                             <Button
                                 size="sm"
-                                variant="outline"
-                                className="text-gray-600 hover:text-gray-800"
-                                onClick={() => handleAction(voucher.id, 'return')}
+                                className="bg-green-600 text-white hover:bg-green-700"
+                                onClick={() =>
+                                    handleAction(voucher.id, 'complete')}
                             >
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Return
+                                <Check className="mr-1 h-3 w-3" />
+                                Complete
                             </Button>
                         )}
 
@@ -188,19 +255,19 @@ export default function Show({ voucher }: VoucherShowProps) {
                             </Button>
                         </Link>
                         {hasPermission('delete vouchers') && (
-                        
-                        <Button
-                            variant="outline"
-                            className="text-red-600 hover:text-red-800 border-red-300"
-                            onClick={() => {
-                                if (confirm('Are you sure you want to delete this voucher?')) {
-                                    router.delete(route('vouchers.destroy', voucher.id))
-                                }
-                            }}
-                        >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                        </Button>
+
+                            <Button
+                                variant="outline"
+                                className="text-red-600 hover:text-red-800 border-red-300"
+                                onClick={() => {
+                                    if (confirm('Are you sure you want to delete this voucher?')) {
+                                        router.delete(route('vouchers.destroy', voucher.id))
+                                    }
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                            </Button>
                         )}
 
                         <Button
@@ -229,11 +296,11 @@ export default function Show({ voucher }: VoucherShowProps) {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-600">Date Given</p>
-                                    <p className="font-medium text-gray-900">{formatDate(voucher.date_given)}</p>
+                                    <p className="font-medium text-gray-900">{formatDateOnly(voucher.date_given)}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600">Date Delivery</p>
-                                    <p className="font-medium text-gray-900">{formatDate(voucher.date_delivery)}</p>
+                                    <p className="font-medium text-gray-900">{formatDateOnly(voucher.date_delivery)}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600">Status</p>
@@ -312,9 +379,8 @@ export default function Show({ voucher }: VoucherShowProps) {
                             <div className="space-y-4">
                                 {voucher.activities.map((event, index) => (
                                     <div key={event.id} className="flex items-start space-x-3">
-                                        <div className={`p-2 rounded-full ${
-                                            index === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-600'
-                                        }`}>
+                                        <div className={`p-2 rounded-full ${index === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-600'
+                                            }`}>
                                             {getTimelineIcon(event.action)}
                                         </div>
                                         <div className="flex-1 min-w-0">

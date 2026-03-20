@@ -22,6 +22,23 @@ class Stock extends Model
     ];
 
     /**
+     * Get the metal data as an array
+     */
+    public function getMetalDataAttribute()
+    {
+        if (empty($this->metal)) {
+            return [];
+        }
+        
+        try {
+            $decoded = json_decode($this->metal, true);
+            return is_array($decoded) ? $decoded : [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Get vouchers for this stock
      */
     public function vouchers()

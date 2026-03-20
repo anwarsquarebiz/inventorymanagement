@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             InventorySeeder::class,
             VoucherSeeder::class,
+            MetalSeeder::class,
         ]);
     }
 }

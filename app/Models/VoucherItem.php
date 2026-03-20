@@ -15,16 +15,26 @@ class VoucherItem extends Model
         'product_id',
         'shape',
         'pcs',
+        'pcs_used',
+        'pcs_returned',
         'weight',
+        'weight_used',
+        'weight_returned',
         'code',
         'remarks',
         'temporary_return',
+        'reviewed',
     ];
 
     protected $casts = [
         'weight' => 'decimal:2',
+        'weight_used' => 'decimal:2',
+        'weight_returned' => 'decimal:2',
         'pcs' => 'integer',
+        'pcs_used' => 'integer',
+        'pcs_returned' => 'integer',
         'temporary_return' => 'boolean',
+        'reviewed' => 'boolean',
     ];
 
     /**

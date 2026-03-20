@@ -73,6 +73,16 @@ class VoucherPolicy
     }
 
     /**
+     * Determine whether the user can verify the voucher.
+     */
+    public function verify(User $user, Voucher $voucher): bool
+    {
+        // Allow managers and admins to verify vouchers
+        return $user->hasRole(['admin', 'manager']) ||
+            $user->id === $voucher->person_in_charge; // Person in charge can also verify
+    }
+
+    /**
      * Determine whether the user can restore the voucher.
      */
     public function restore(User $user, Voucher $voucher): bool

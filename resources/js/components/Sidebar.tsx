@@ -17,7 +17,9 @@ import {
     ChevronRight,
     Shield,
     Key,
-    Tag
+    Tag,
+    Coins,
+    BarChart2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -40,7 +42,8 @@ export default function Sidebar() {
         return permissions.includes(permission);
     };
 
-    const isSettingsActive = url.startsWith('/products') || url.startsWith('/shapes') || 
+    const isSettingsActive = url.startsWith('/products') || url.startsWith('/shapes') ||
+                            url.startsWith('/metals') ||
                             url.startsWith('/roles') || url.startsWith('/permissions') ||
                             url.startsWith('/product-categorizations');
     const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
@@ -70,9 +73,23 @@ export default function Sidebar() {
         },
         { 
             id: 'vouchers-groups', 
-            label: 'Vouchers by Stock', 
+            label: 'Stocks', 
             icon: ListOrdered, 
             route: '/vouchers-groups',
+            permission: 'view vouchers'
+        },
+        { 
+            id: 'metal-vouchers', 
+            label: 'Metal Vouchers', 
+            icon: Coins, 
+            route: '/metal-vouchers',
+            permission: 'view vouchers'
+        },
+        { 
+            id: 'metal-usage', 
+            label: 'Metal Usage', 
+            icon: BarChart2, 
+            route: '/metal-usage',
             permission: 'view vouchers'
         },
         // { 
@@ -125,6 +142,13 @@ export default function Sidebar() {
             permission: 'view settings'
         },
         {
+            id: 'metals',
+            label: 'Metals',
+            icon: Coins,
+            route: '/metals',
+            permission: 'view settings'
+        },
+        {
             id: 'roles',
             label: 'Roles',
             icon: Shield,
@@ -144,7 +168,8 @@ export default function Sidebar() {
     const visibleSettingsItems = settingsItems.filter(item => hasPermission(item.permission));
 
     const isActive = (route: string) => {
-        return url.startsWith(route.replace(/\/$/, ''));
+        const normalized = route.replace(/\/$/, '');
+        return url === normalized || url.startsWith(normalized + '/');
     };
 
     const handleLogout = () => {
@@ -186,7 +211,7 @@ export default function Sidebar() {
                     })}
 
                     {/* Settings group - only show if user has at least one settings permission */}
-                    {visibleSettingsItems.length > 0 && (
+                    {hasPermission('view settings') && visibleSettingsItems.length > 0 && (
                         <li>
                             <button
                                 type="button"
@@ -216,7 +241,7 @@ export default function Sidebar() {
                                                 <Link
                                                     href={item.route}
                                                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                                                        url.startsWith(item.route)
+                                                        isActive(item.route)
                                                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                                             : 'text-gray-700 hover:bg-gray-100'
                                                     }`}

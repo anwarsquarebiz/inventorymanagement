@@ -37,7 +37,9 @@ export default function Login() {
     return (
         <>
             <Head title="Login" />
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-blue-900 relative overflow-hidden">
+            <div className="min-h-screen relative overflow-hidden
+             bg-slate-900
+             bg-gradient-to-br from-slate-900 via-emerald-900 to-blue-900">
                 {/* Background Pattern */}
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.03%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
                 
@@ -153,51 +155,7 @@ export default function Login() {
                                     </span>
                                 </div>
                             </form>
-                        </Card>
-
-                        {/* Demo Accounts */}
-                        <Card className="p-6 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-emerald-500/30">
-                            <div className="text-center mb-4">
-                                <h3 className="text-lg font-semibold text-white mb-2">Try Demo Accounts</h3>
-                                <p className="text-sm text-gray-300">Click to auto-fill credentials</p>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                {demoAccounts.map((account) => {
-                                    const Icon = account.icon;
-                                    return (
-                                        <div key={account.role} className="bg-white/5 p-4 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center">
-                                                    <Icon className={`h-5 w-5 text-${account.color}-400 mr-3`} />
-                                                    <div>
-                                                        <div className="text-sm font-medium text-white">{account.role}</div>
-                                                        <div className="text-xs text-gray-400">{account.email}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex space-x-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setData('email', account.email);
-                                                            setData('password', account.password);
-                                                        }}
-                                                        className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-full hover:bg-emerald-600/30 transition-colors"
-                                                    >
-                                                        Use
-                                                    </button>
-                                                    <button
-                                                        onClick={() => copyToClipboard(account.email, `${account.role}-email`)}
-                                                        className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
-                                                    >
-                                                        {copied === `${account.role}-email` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
+                        </Card>                       
                     </div>
                 </div>
             </div>
