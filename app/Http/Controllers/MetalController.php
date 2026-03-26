@@ -26,9 +26,12 @@ class MetalController extends Controller
         $v = $item->metalVoucher;
         $w = (float) $item->weight;
         if ($w < 0) {
+            $isRepairAdjustment = strcasecmp((string) ($item->remarks ?? ''), 'Repair items adjustment') === 0;
             return [
                 'date' => $v ? $v->date_given?->format('Y-m-d') : null,
-                'particulars' => $v ? "Loss adjustment — Metal Voucher {$v->voucher_no}" : 'Loss adjustment',
+                'particulars' => $isRepairAdjustment
+                    ? 'Repair items adjustment'
+                    : ($v ? "Loss adjustment — Metal Voucher {$v->voucher_no}" : 'Loss adjustment'),
                 'credit' => 0,
                 'debit' => $w,
                 'type' => 'debit',

@@ -72,13 +72,82 @@ class MetalVoucherController extends Controller
     public function storeLossAdjustment(Request $request)
     {
         $validated = $request->validate([
-            'metal_id' => ['required', 'exists:metals,id'],
-            'date_from' => ['required', 'date'],
-            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
-            'monthly_debit_base' => ['required', 'numeric', 'min:0'],
-            'percentage' => ['required', 'numeric', 'min:0.01', 'max:100'],
-            'adjustment_grams' => ['required', 'numeric', 'min:0.01'],
+            'mode' => ['required', 'in:percentage,repair'],
+            'metal_id' => ['required_if:mode,percentage', 'nullable', 'exists:metals,id'],
+            'date_from' => ['required_if:mode,percentage', 'nullable', 'date'],
+            'date_to' => ['required_if:mode,percentage', 'nullable', 'date', 'after_or_equal:date_from'],
+            'monthly_debit_base' => ['required_if:mode,percentage', 'nullable', 'numeric', 'min:0'],
+            'percentage' => ['required_if:mode,percentage', 'nullable', 'numeric', 'min:0.01', 'max:100'],
+            'adjustment_grams' => ['required_if:mode,percentage', 'nullable', 'numeric', 'min:0.01'],
+            'repair_items' => ['required_if:mode,repair', 'array', 'min:1'],
+            'repair_items.*.stock_item_name' => ['required_if:mode,repair', 'string', 'max:255'],
+            'repair_items.*.metal_id' => ['required_if:mode,repair', 'exists:metals,id'],
+            'repair_items.*.grams_used' => ['required_if:mode,repair', 'numeric', 'min:0.01'],
         ]);
+
+        if ($validated['mode'] === 'repair') {
+            $repairItems = collect($validated['repair_items'] ?? [])
+                ->map(function ($item) {
+                    return [
+                        'stock_item_name' => trim((string) ($item['stock_item_name'] ?? '')),
+                        'metal_id' => (int) ($item['metal_id'] ?? 0),
+                        'grams_used' => round((float) ($item['grams_used'] ?? 0), 2),
+                    ];
+                });
+
+            if ($repairItems->isEmpty()) {
+                return back()->withErrors([
+                    'repair_items' => 'Add at least one repair entry.',
+                ])->withInput();
+            }
+
+            foreach ($repairItems as $item) {
+                if ($item['stock_item_name'] === '' || $item['metal_id'] <= 0 || $item['grams_used'] <= 0) {
+                    return back()->withErrors([
+                        'repair_items' => 'Each repair row must include stock item name, metal, and grams used.',
+                    ])->withInput();
+                }
+            }
+
+            $groupedByMetal = $repairItems->groupBy('metal_id')->map(function ($rows) {
+                return round((float) $rows->sum('grams_used'), 2);
+            });
+
+            $notesItems = $repairItems
+                ->map(fn ($row) => sprintf('%s %s g', $row['stock_item_name'], number_format((float) $row['grams_used'], 2, '.', '')))
+                ->implode(', ');
+
+            DB::transaction(function () use ($groupedByMetal, $notesItems) {
+                $metalVoucher = MetalVoucher::create([
+                    'date_given' => now()->format('Y-m-d'),
+                    'created_by' => auth()->id(),
+                    'status' => MetalVoucher::STATUS_IN_USE,
+                    'notes' => 'Repair adjustment items: ' . $notesItems,
+                ]);
+
+                foreach ($groupedByMetal as $metalId => $grams) {
+                    MetalVoucherItem::create([
+                        'metal_voucher_id' => $metalVoucher->id,
+                        'metal_id' => (int) $metalId,
+                        'weight' => -abs((float) $grams),
+                        'remarks' => 'Repair items adjustment',
+                    ]);
+                }
+
+                MetalVoucherActivity::create([
+                    'metal_voucher_id' => $metalVoucher->id,
+                    'action' => 'created',
+                    'user_id' => auth()->id(),
+                    'description' => 'Repair adjustment metal voucher created',
+                    'timestamp' => now(),
+                ]);
+
+                AuditLog::log($metalVoucher, 'CREATE', auth()->id(), null, $metalVoucher->toArray());
+            });
+
+            return redirect()->route('metal-vouchers.index')
+                ->with('success', 'Repair adjustment recorded successfully.');
+        }
 
         $metal = Metal::findOrFail($validated['metal_id']);
         $baseDebit = (float) $validated['monthly_debit_base'];

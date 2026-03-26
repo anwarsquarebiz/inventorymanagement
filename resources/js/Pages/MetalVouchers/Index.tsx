@@ -80,7 +80,7 @@ export default function Index({ metalVouchers, filters }: MetalVouchersIndexProp
             in_use: { color: 'bg-purple-100 hover:bg-purple-100 text-purple-800', label: 'In Use' },
             rejected: { color: 'bg-red-100 hover:bg-red-100 text-red-800', label: 'Rejected' },
             completed: { color: 'bg-gray-100 hover:bg-gray-100 text-gray-800', label: 'Completed' },
-            loss_adjustment: { color: 'bg-red-100 hover:bg-red-100 text-red-800', label: 'Adjustment' },
+            loss_adjustment: { color: 'bg-red-100 hover:bg-red-100 text-red-800', label: 'Adjusted' },
         };
         const info = statusMap[status];
         return <Badge className={info?.color || 'bg-gray-100 text-gray-800'}>{info?.label || status}</Badge>;
@@ -116,7 +116,7 @@ export default function Index({ metalVouchers, filters }: MetalVouchersIndexProp
                         <Link href={route('metal-vouchers.loss-adjustment.create')}>
                             <Button variant="outline" className="border-amber-600 text-amber-800 hover:bg-amber-50">
                                 <TrendingDown className="mr-2 h-4 w-4" />
-                                Adjustment
+                                Adjustments
                             </Button>
                         </Link>
                     </div>
