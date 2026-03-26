@@ -11,6 +11,7 @@ import {
     Package,
     Plus,
     Search,
+    TrendingDown,
     Trash2,
     X,
 } from 'lucide-react';
@@ -79,6 +80,7 @@ export default function Index({ metalVouchers, filters }: MetalVouchersIndexProp
             in_use: { color: 'bg-purple-100 hover:bg-purple-100 text-purple-800', label: 'In Use' },
             rejected: { color: 'bg-red-100 hover:bg-red-100 text-red-800', label: 'Rejected' },
             completed: { color: 'bg-gray-100 hover:bg-gray-100 text-gray-800', label: 'Completed' },
+            loss_adjustment: { color: 'bg-red-100 hover:bg-red-100 text-red-800', label: 'Adjustment' },
         };
         const info = statusMap[status];
         return <Badge className={info?.color || 'bg-gray-100 text-gray-800'}>{info?.label || status}</Badge>;
@@ -104,12 +106,20 @@ export default function Index({ metalVouchers, filters }: MetalVouchersIndexProp
                         <h1 className="mb-2 text-2xl font-semibold text-gray-900">Metal Vouchers</h1>
                         <p className="text-gray-600">Track metal transactions by voucher</p>
                     </div>
-                    <Link href={route('metal-vouchers.create')}>
-                        <Button className="bg-emerald-600 text-white hover:bg-emerald-700">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Metal Voucher
-                        </Button>
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                        <Link href={route('metal-vouchers.create')}>
+                            <Button className="bg-emerald-600 text-white hover:bg-emerald-700">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Metal Voucher
+                            </Button>
+                        </Link>
+                        <Link href={route('metal-vouchers.loss-adjustment.create')}>
+                            <Button variant="outline" className="border-amber-600 text-amber-800 hover:bg-amber-50">
+                                <TrendingDown className="mr-2 h-4 w-4" />
+                                Adjustment
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 <Card className="p-4">
@@ -179,7 +189,7 @@ export default function Index({ metalVouchers, filters }: MetalVouchersIndexProp
                                     <tr key={mv.id} className="border-b border-gray-100 hover:bg-gray-50">
                                         <td className="p-4 font-medium text-gray-900">{mv.voucher_no}</td>
                                         <td className="p-4 text-gray-600">{formatDateOnly(mv.date_given)}</td>
-                                        <td className="p-4">{getStatusBadge(mv.status)}</td>
+                                        <td className="p-4">{Number((mv.items ?? []).reduce((s, i) => s + (parseFloat(String(i.weight)) || 0), 0).toFixed(2)) < 0.0001 ? getStatusBadge('loss_adjustment') : getStatusBadge(mv.status)}</td>
                                         <td className="p-4 text-gray-600">{mv.items?.length ?? 0}</td>
                                         <td className="p-4 text-gray-600">
                                             {(mv.items ?? []).reduce((s, i) => s + (parseFloat(String(i.weight)) || 0), 0).toFixed(2)}

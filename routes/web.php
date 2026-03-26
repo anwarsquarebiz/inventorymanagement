@@ -73,9 +73,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Metals
     Route::resource('metals', MetalController::class);
     Route::get('/metal-usage', [MetalController::class, 'usage'])->name('metal-usage.index');
+    Route::get('/metal-usage/{metal}/monthly-debit', [MetalController::class, 'monthlyDebit'])->name('metal-usage.monthly-debit');
     Route::get('/metal-usage/{metal}', [MetalController::class, 'ledger'])->name('metal-usage.ledger');
+    Route::get('/metal-usage/{metal}/statement/export-pdf', [MetalController::class, 'exportStatementPdf'])->name('metal-usage.statement.export-pdf');
 
     // Metal Vouchers
+    Route::get('/metal-vouchers/loss-adjustment', [MetalVoucherController::class, 'createLossAdjustment'])->name('metal-vouchers.loss-adjustment.create');
+    Route::post('/metal-vouchers/loss-adjustment', [MetalVoucherController::class, 'storeLossAdjustment'])->name('metal-vouchers.loss-adjustment.store');
     Route::resource('metal-vouchers', MetalVoucherController::class);
     Route::post('/metal-vouchers/{metal_voucher}/verify', [MetalVoucherController::class, 'verify'])->name('metal-vouchers.verify');
     Route::post('/metal-vouchers/{metal_voucher}/approve', [MetalVoucherController::class, 'approve'])->name('metal-vouchers.approve');

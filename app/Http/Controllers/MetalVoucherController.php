@@ -7,6 +7,7 @@ use App\Models\MetalVoucherActivity;
 use App\Models\MetalVoucherItem;
 use App\Models\Metal;
 use App\Models\AuditLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -54,6 +55,87 @@ class MetalVoucherController extends Controller
         return Inertia::render('MetalVouchers/Create', [
             'metals' => $metals,
         ]);
+    }
+
+    public function createLossAdjustment(): Response
+    {
+        $metals = Metal::orderBy('name')->get(['id', 'name']);
+        $now = Carbon::now();
+
+        return Inertia::render('MetalVouchers/LossAdjustment', [
+            'metals' => $metals,
+            'default_date_from' => $now->copy()->startOfMonth()->format('Y-m-d'),
+            'default_date_to' => $now->copy()->endOfMonth()->format('Y-m-d'),
+        ]);
+    }
+
+    public function storeLossAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'metal_id' => ['required', 'exists:metals,id'],
+            'date_from' => ['required', 'date'],
+            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
+            'monthly_debit_base' => ['required', 'numeric', 'min:0'],
+            'percentage' => ['required', 'numeric', 'min:0.01', 'max:100'],
+            'adjustment_grams' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $metal = Metal::findOrFail($validated['metal_id']);
+        $baseDebit = (float) $validated['monthly_debit_base'];
+
+        if ($baseDebit <= 0) {
+            return back()->withErrors([
+                'monthly_debit_base' => 'Monthly stock usage (debit) must be greater than zero.',
+            ])->withInput();
+        }
+
+        $amount = round((float) $validated['adjustment_grams'], 2);
+        if ($amount <= 0) {
+            return back()->withErrors([
+                'adjustment_grams' => 'Adjustment amount must be greater than zero.',
+            ])->withInput();
+        }
+
+        $weight = -$amount;
+
+        $dateFromYmd = Carbon::parse($validated['date_from'])->format('Y-m-d');
+        $dateToYmd = Carbon::parse($validated['date_to'])->format('Y-m-d');
+
+        DB::transaction(function () use ($validated, $metal, $weight, $baseDebit, $amount, $dateFromYmd, $dateToYmd) {
+            $metalVoucher = MetalVoucher::create([
+                'date_given' => $dateToYmd,
+                'created_by' => auth()->id(),
+                'status' => MetalVoucher::STATUS_IN_USE,
+                'notes' => sprintf(
+                    'Loss adjustment: %s g recorded (reference %s%% of %s g stock-usage base) for period %s to %s.',
+                    number_format($amount, 2, '.', ''),
+                    $validated['percentage'],
+                    number_format($baseDebit, 2, '.', ''),
+                    $dateFromYmd,
+                    $dateToYmd
+                ),
+            ]);
+
+            MetalVoucherItem::create([
+                'metal_voucher_id' => $metalVoucher->id,
+                'metal_id' => $metal->id,
+                'weight' => $weight,
+                'remarks' => 'Loss adjustment',
+            ]);
+
+            MetalVoucherActivity::create([
+                'metal_voucher_id' => $metalVoucher->id,
+                'action' => 'created',
+                'user_id' => auth()->id(),
+                'description' => 'Loss adjustment metal voucher created',
+                'timestamp' => now(),
+            ]);
+
+            AuditLog::log($metalVoucher, 'CREATE', auth()->id(), null, $metalVoucher->toArray());
+        });
+
+        return redirect()->route('metal-vouchers.index')
+            ->with('success', 'Loss adjustment recorded successfully.');
     }
 
     public function store(Request $request)
@@ -174,6 +256,9 @@ class MetalVoucherController extends Controller
             AuditLog::log($metal_voucher, 'DELETE', auth()->id(), $metal_voucher->toArray());
             $metal_voucher->delete();
         });
+
+        // Delete the metal voucher items
+        MetalVoucherItem::where('metal_voucher_id', $metal_voucher->id)->delete();
 
         return redirect()->route('metal-vouchers.index')
             ->with('success', 'Metal voucher deleted successfully.');

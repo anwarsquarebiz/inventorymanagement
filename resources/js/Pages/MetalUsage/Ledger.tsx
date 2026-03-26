@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Search, ChevronLeft, ChevronRight, Download, X } from 'lucide-react'
 
 declare const route: (name: string, params?: Record<string, number | string | undefined>) => string
 
@@ -57,6 +57,11 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
     const [dateTo, setDateTo] = useState(filters.date_to ?? '')
     const [particulars, setParticulars] = useState(filters.particulars ?? '')
 
+    const [statementModalOpen, setStatementModalOpen] = useState(false)
+    const [statementDateFrom, setStatementDateFrom] = useState(filters.date_from ?? '')
+    const [statementDateTo, setStatementDateTo] = useState(filters.date_to ?? '')
+    const [statementError, setStatementError] = useState<string | null>(null)
+
     const applyFilters = (e: React.FormEvent) => {
         e.preventDefault()
         router.get(route('metal-usage.ledger', { metal: metal.id }), {
@@ -74,6 +79,39 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
     }
 
     const hasActiveFilters = dateFrom || dateTo || (particulars && particulars.trim())
+
+    const openStatementModal = () => {
+        setStatementError(null)
+        setStatementDateFrom(dateFrom ?? '')
+        setStatementDateTo(dateTo ?? '')
+        setStatementModalOpen(true)
+    }
+
+    const downloadStatement = (e: React.FormEvent) => {
+        e.preventDefault()
+        setStatementError(null)
+
+        if (!statementDateFrom || !statementDateTo) {
+            setStatementError('Please select start date and end date.')
+            return
+        }
+
+        const start = new Date(statementDateFrom)
+        const end = new Date(statementDateTo)
+        if (start > end) {
+            setStatementError('Start date must be before or equal to end date.')
+            return
+        }
+
+        const baseUrl = route('metal-usage.statement.export-pdf', { metal: metal.id })
+        const query = new URLSearchParams({
+            date_from: statementDateFrom,
+            date_to: statementDateTo,
+        }).toString()
+
+        window.location.href = `${baseUrl}?${query}`
+        setStatementModalOpen(false)
+    }
 
     return (
         <AppLayout title={`Ledger: ${metal.name}`}>
@@ -98,7 +136,7 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                     <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 flex-1 min-w-0">
                             <div>
-                                <Label htmlFor="date_from">Date From</Label>
+                                <Label htmlFor="date_from">Date From (Opening)</Label>
                                 <Input
                                     id="date_from"
                                     type="date"
@@ -108,7 +146,7 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="date_to">Date To</Label>
+                                <Label htmlFor="date_to">Date To (Closing)</Label>
                                 <Input
                                     id="date_to"
                                     type="date"
@@ -139,6 +177,10 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                                     Clear
                                 </Button>
                             )}
+                            <Button type="button" variant="outline" onClick={openStatementModal}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Statement
+                            </Button>
                         </div>
                     </form>
                 </Card>
@@ -170,10 +212,10 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                                             <td className="p-3 text-gray-600">{formatDate(row.date)}</td>
                                             <td className="p-3 text-gray-900">{row.particulars}</td>
                                             <td className="p-3 text-right tabular-nums text-gray-600">
-                                                {row.credit > 0 ? formatWeight(row.credit) : '–'}
+                                                {row.credit !== 0 ? formatWeight(row.credit) : '–'}
                                             </td>
                                             <td className="p-3 text-right tabular-nums text-gray-600">
-                                                {row.debit > 0 ? formatWeight(row.debit) : '–'}
+                                                {row.debit !== 0 ? formatWeight(row.debit) : '–'}
                                             </td>
                                             <td className="p-3 text-right tabular-nums font-medium">{formatWeight(row.balance)}</td>
                                         </tr>
@@ -225,6 +267,87 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                     )}
                 </Card>
             </div>
+
+            {statementModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div
+                        className="absolute inset-0 bg-black/50"
+                        onClick={() => {
+                            setStatementModalOpen(false)
+                            setStatementError(null)
+                        }}
+                    />
+                    <div
+                        className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6"
+                        onClick={(ev) => ev.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    Download Metal Statement (PDF)
+                                </h2>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Opening/closing balances are calculated from all ledger entries.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="rounded-md p-2 hover:bg-gray-100"
+                                onClick={() => {
+                                    setStatementModalOpen(false)
+                                    setStatementError(null)
+                                }}
+                                aria-label="Close"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={downloadStatement} className="space-y-4">
+                            <div>
+                                <Label htmlFor="statement_date_from">Start Date</Label>
+                                <Input
+                                    id="statement_date_from"
+                                    type="date"
+                                    value={statementDateFrom}
+                                    onChange={(e) => setStatementDateFrom(e.target.value)}
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="statement_date_to">End Date</Label>
+                                <Input
+                                    id="statement_date_to"
+                                    type="date"
+                                    value={statementDateTo}
+                                    onChange={(e) => setStatementDateTo(e.target.value)}
+                                    className="mt-1"
+                                />
+                            </div>
+
+                            {statementError && (
+                                <div className="text-sm text-red-600">{statementError}</div>
+                            )}
+
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setStatementModalOpen(false)
+                                        setStatementError(null)
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={!statementDateFrom || !statementDateTo}>
+                                    Download
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     )
 }
