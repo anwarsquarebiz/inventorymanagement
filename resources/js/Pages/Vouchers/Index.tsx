@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatDateOnly } from '@/lib/utils';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Check,
@@ -91,7 +91,7 @@ export default function Index({
     const user = props?.auth?.user;
     const permissions: string[] = user?.permissions || [];
 
-    console.log(permissions);
+    console.log('permissions', permissions);
 
     const hasPermission = (permission?: string): boolean => {
         if (!permission) return true; // No permission required
@@ -140,36 +140,42 @@ export default function Index({
 
     const getStatusBadge = (status: string) => {
         const statusMap = {
-            pending: {
+            pending_verification: {
                 color: 'bg-yellow-100 hover:bg-yellow-100 text-yellow-800',
-                label: 'Pending',
-            },
-            approved: {
-                color: 'bg-emerald-100 hover:bg-emerald-100 text-emerald-800',
-                label: 'Approved',
+                label: 'Pending Verification',
             },
             in_transit: {
                 color: 'bg-blue-100 hover:bg-blue-100 text-blue-800',
                 label: 'In Transit',
             },
-            received: {
-                color: 'bg-purple-100 hover:bg-purple-100 text-purple-800',
-                label: 'Received',
+            under_review: {
+                color: 'bg-emerald-100 hover:bg-emerald-100 text-emerald-800',
+                label: 'Under Review',
             },
-            returned: {
+            in_use: {
+                color: 'bg-purple-100 hover:bg-purple-100 text-purple-800',
+                label: 'In Use',
+            },
+            rejected: {
+                color: 'bg-red-100 hover:bg-red-100 text-red-800',
+                label: 'Rejected',
+            },
+            completed: {
                 color: 'bg-gray-100 hover:bg-gray-100 text-gray-800',
-                label: 'Returned',
+                label: 'Completed',
             },
         };
 
         const statusInfo = statusMap[status as keyof typeof statusMap];
-        return <Badge className={statusInfo.color}>{statusInfo.label}</Badge>;
+        return <Badge className={statusInfo?.color || 'bg-gray-100 text-gray-800'}>{statusInfo?.label || status}</Badge>;
     };
 
-    const canApprove = (status: string) => status === 'pending';
-    const canReceive = (status: string) =>
-        status === 'approved' || status === 'in_transit';
-    const canReturn = (status: string) => status === 'received';
+    const canVerify = (status: string) => status === 'pending_verification';
+    const canReceive = (status: string) => status === 'in_transit';
+    const canApprove = (status: string) => status === 'under_review';
+    const canReject = (status: string) => status === 'under_review';
+    const canReturn = (status: string) => status === 'in_use';
+    const canComplete = (status: string) => status === 'in_use';
 
     const handleAction = (voucherId: number, action: string) => {
         router.post(
@@ -199,12 +205,14 @@ export default function Index({
                             Manage workshop vouchers and track stone movement
                         </p>
                     </div>
+                    {hasPermission('create vouchers') && (
                     <Link href={route('vouchers.create')}>
                         <Button className="bg-emerald-600 text-white hover:bg-emerald-700">
                             <Plus className="mr-2 h-4 w-4" />
                             Create Voucher
                         </Button>
                     </Link>
+                    )}
                 </div>
 
                 {/* Search and Filters */}
@@ -235,11 +243,12 @@ export default function Index({
                                 className="rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                             >
                                 <option value="">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
+                                <option value="pending_verification">Pending Verification</option>
                                 <option value="in_transit">In Transit</option>
-                                <option value="received">Received</option>
-                                <option value="returned">Returned</option>
+                                <option value="under_review">Under Review</option>
+                                <option value="in_use">In Use</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="completed">Completed</option>
                             </select>
 
                             <select
@@ -301,7 +310,7 @@ export default function Index({
                             </div>
 
                             {/* Third Row: Date Delivery Range */}
-                            <div className="grid max-w-fit grid-cols-1 gap-4 md:grid-cols-3">
+                            {/* <div className="grid max-w-fit grid-cols-1 gap-4 md:grid-cols-3">
                                 <div className="flex items-center text-sm font-medium text-gray-700">
                                     Date Delivery:
                                 </div>
@@ -323,7 +332,7 @@ export default function Index({
                                     }
                                     className="focus:ring-2 focus:ring-emerald-500"
                                 />
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </Card>
@@ -335,26 +344,29 @@ export default function Index({
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50">
                                     <th className="p-4 text-left font-medium text-gray-900">
-                                        Voucher No
+                                        Stock No
                                     </th>
                                     <th className="p-4 text-left font-medium text-gray-900">
-                                        Stock No
+                                        Voucher No
                                     </th>
                                     <th className="p-4 text-left font-medium text-gray-900">
                                         Date Given
                                     </th>
-                                    <th className="p-4 text-left font-medium text-gray-900">
+                                    {/* <th className="p-4 text-left font-medium text-gray-900">
                                         Date Delivery
-                                    </th>
+                                    </th> */}
                                     <th className="p-4 text-left font-medium text-gray-900">
                                         Status
                                     </th>
                                     <th className="p-4 text-left font-medium text-gray-900">
+                                        No. of Packets
+                                    </th>
+                                    {/* <th className="p-4 text-left font-medium text-gray-900">
                                         Total Pcs
-                                    </th>
-                                    <th className="p-4 text-left font-medium text-gray-900">
+                                    </th> */}
+                                    {/* <th className="p-4 text-left font-medium text-gray-900">
                                         Total Weight
-                                    </th>
+                                    </th> */}
                                     <th className="p-4 text-left font-medium text-gray-900">
                                         Person in Charge
                                     </th>
@@ -369,9 +381,6 @@ export default function Index({
                                         key={voucher.id}
                                         className="border-b border-gray-100 hover:bg-gray-50"
                                     >
-                                        <td className="p-4 font-medium text-gray-900">
-                                            {voucher.voucher_no}
-                                        </td>
                                         <td className="p-4 text-gray-600">
                                             {/* Link to stock group */}
                                             <Link className="hover:text-emerald-800 font-medium flex items-center" href={route('vouchers-groups.show', voucher.stock_no)}>
@@ -379,16 +388,23 @@ export default function Index({
                                                 <ExternalLink className="mr-1 h-4 w-4" />
                                             </Link>
                                         </td>
-                                        <td className="p-4 text-gray-600">
-                                            {formatDate(voucher.date_given)}
+                                        <td className="p-4 font-medium text-gray-900">
+                                            {voucher.voucher_no}
                                         </td>
+                                        
                                         <td className="p-4 text-gray-600">
+                                            {formatDateOnly(voucher.date_given)}
+                                        </td>
+                                        {/* <td className="p-4 text-gray-600">
                                             {formatDate(voucher.date_delivery)}
-                                        </td>
+                                        </td> */}
                                         <td className="p-4">
                                             {getStatusBadge(voucher.status)}
                                         </td>
-                                        <td className="p-4 text-gray-600">
+                                        <td className="p-4">
+                                            {voucher.items?.length}
+                                        </td>
+                                        {/* <td className="p-4 text-gray-600">                                            
                                             {' '}
                                             {(voucher.items ?? [])
                                                 .map(
@@ -403,8 +419,8 @@ export default function Index({
                                                     0,
                                                 )}{' '}
                                             pcs
-                                        </td>
-                                        <td className="p-4 text-gray-600">
+                                        </td> */}
+                                        {/* <td className="p-4 text-gray-600">
                                             {' '}
                                             {(voucher.items ?? [])
                                                 .map(
@@ -422,26 +438,39 @@ export default function Index({
                                                 )
                                                 .toFixed(2)}{' '}
                                             cts
-                                        </td>
+                                        </td> */}
                                         <td className="p-4 text-gray-600">
                                             {voucher.person_in_charge.name}
                                         </td>
                                         <td className="p-4">
                                             <div className="flex space-x-2">
-                                                <Link
-                                                    href={route(
+                                                {(() => {
+                                                    const showPath = route(
                                                         'vouchers.show',
                                                         voucher.id,
-                                                    )}
-                                                >
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                    >
-                                                        <Eye className="mr-1 h-3 w-3" />
-                                                        View
-                                                    </Button>
-                                                </Link>
+                                                    ) as string;
+                                                    const params = new URLSearchParams();
+                                                    const page = vouchers?.current_page;
+                                                    if (page != null && page > 1)
+                                                        params.set('page', String(page));
+                                                    if (searchTerm)
+                                                        params.set('search', searchTerm);
+                                                    const href =
+                                                        params.toString()
+                                                            ? `${showPath}?${params.toString()}`
+                                                            : showPath;
+                                                    return (
+                                                        <Link href={href}>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                            >
+                                                                <Eye className="mr-1 h-3 w-3" />
+                                                                View
+                                                            </Button>
+                                                        </Link>
+                                                    );
+                                                })()}
 
                                                 {/* 
                                                 <Link href={route('vouchers.edit', voucher.id)}>
@@ -477,7 +506,19 @@ export default function Index({
                                                     </Button>
                                                 )}
 
-                                                {canApprove(voucher.status) && (
+                                                {hasPermission('verify vouchers') && canVerify(voucher.status) && (                                                
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-yellow-600 text-white hover:bg-yellow-700"
+                                                        onClick={() =>
+                                                            handleAction(voucher.id, 'verify')}
+                                                    >
+                                                        <Check className="mr-1 h-3 w-3" />
+                                                        Verify
+                                                    </Button>
+                                                )}                                                
+
+                                                {hasPermission('approve vouchers') && canApprove(voucher.status) && (
                                                     <Button
                                                         size="sm"
                                                         className="bg-emerald-600 text-white hover:bg-emerald-700"
@@ -493,7 +534,19 @@ export default function Index({
                                                     </Button>
                                                 )}
 
-                                                {canReceive(voucher.status) && (
+                                                {hasPermission('reject vouchers') && canReject(voucher.status) && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-red-600 text-white hover:bg-red-700"
+                                                        onClick={() =>
+                                                            handleAction(voucher.id, 'reject')}
+                                                    >
+                                                        <X className="mr-1 h-3 w-3" />
+                                                        Reject
+                                                    </Button>
+                                                )}
+
+                                                {hasPermission('receive at workshop') && canReceive(voucher.status) && (
                                                     <Button
                                                         size="sm"
                                                         className="bg-blue-600 text-white hover:bg-blue-700"
@@ -509,7 +562,19 @@ export default function Index({
                                                     </Button>
                                                 )}
 
-                                                {canReturn(voucher.status) && (
+                                                {hasPermission('complete vouchers') && canComplete(voucher.status) && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-green-600 text-white hover:bg-green-700"
+                                                        onClick={() =>
+                                                            handleAction(voucher.id, 'complete')}
+                                                        >
+                                                        <Check className="mr-1 h-3 w-3" />
+                                                        Complete
+                                                    </Button>
+                                                )}
+
+                                                {/* {canReturn(voucher.status) && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -524,7 +589,7 @@ export default function Index({
                                                         <RotateCcw className="mr-1 h-3 w-3" />
                                                         Return
                                                     </Button>
-                                                )}
+                                                )} */}
                                             </div>
                                         </td>
                                     </tr>

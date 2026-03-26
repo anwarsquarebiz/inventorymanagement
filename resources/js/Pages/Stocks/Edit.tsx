@@ -18,6 +18,13 @@ interface Stock {
     product_categorization?: string | null
 }
 
+interface MetalWithGrams {
+    [key: string]: {
+        grams: string
+        current_rate: string
+    } // metal type -> { grams, current_rate }
+}
+
 interface ProductCategorization {
     id: number
     name: string
@@ -31,7 +38,7 @@ interface StockEditProps {
 export default function Edit({ stock, productCategorizations }: StockEditProps) {
     // Ensure stock_no is always available
     const stockNo = stock?.stock_no || '';
-    
+
     // Parse products_used from string to array if it exists
     const parseProductsUsed = (value: string | null | undefined): string[] => {
         if (!value) return [];
@@ -41,10 +48,42 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
         return value.split(',').map(v => v.trim()).filter(v => v !== '');
     };
 
+    // Parse metal from JSON string to object with grams and current_rate
+    const parseMetal = (value: string | null | undefined): MetalWithGrams => {
+        if (!value) return {};
+        try {
+            // Try to parse as JSON first
+            const parsed = JSON.parse(value);
+            if (typeof parsed === 'object' && parsed !== null) {
+                const result: MetalWithGrams = {};
+                Object.entries(parsed as Record<string, any>).forEach(([metalType, metalValue]) => {
+                    // Backward compatibility: previously value was just a grams string
+                    if (typeof metalValue === 'string') {
+                        result[metalType] = {
+                            grams: metalValue,
+                            current_rate: '',
+                        };
+                    } else if (metalValue && typeof metalValue === 'object') {
+                        result[metalType] = {
+                            grams: typeof metalValue.grams === 'string' ? metalValue.grams : '',
+                            current_rate: typeof metalValue.current_rate === 'string' ? metalValue.current_rate : '',
+                        };
+                    }
+                });
+                return result;
+            }
+        } catch (e) {
+            // If not JSON, treat as old format (single string value)
+            // Return empty object for old format - user will need to re-enter
+            return {};
+        }
+        return {};
+    };
+
     const [isDragging, setIsDragging] = React.useState(false);
 
     const { data, setData, put, processing, errors } = useForm({
-        metal: stock?.metal || '',
+        metal: parseMetal(stock?.metal) as MetalWithGrams,
         products_used: parseProductsUsed(stock?.products_used) as string[],
         product_categorization: stock?.product_categorization || '',
         thumbnail: null as File | null,
@@ -53,13 +92,35 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!stockNo) return;
-        
+
         // Create FormData manually to ensure all fields are included
         const formData = new FormData();
-        formData.append('metal', data.metal || '');
+
+        // Convert metal object to JSON string (only include metals with any data)
+        const metalWithGrams: MetalWithGrams = {};
+        Object.keys(data.metal || {}).forEach((metalType) => {
+            const metalData = (data.metal as MetalWithGrams)[metalType];
+            if (!metalData) return;
+
+            const grams = (metalData.grams || '').trim();
+            const currentRate = (metalData.current_rate || '').trim();
+
+            // Only include metals where there is at least some data
+            if (
+                (grams !== '' && !isNaN(parseFloat(grams)) && parseFloat(grams) > 0) ||
+                currentRate !== ''
+            ) {
+                metalWithGrams[metalType] = {
+                    grams,
+                    current_rate: currentRate,
+                };
+            }
+        });
+        formData.append('metal', Object.keys(metalWithGrams).length > 0 ? JSON.stringify(metalWithGrams) : '');
+
         // Convert array to comma-separated string
-        const productsUsedValue = Array.isArray(data.products_used) 
-            ? data.products_used.join(',') 
+        const productsUsedValue = Array.isArray(data.products_used)
+            ? data.products_used.join(',')
             : (data.products_used || '');
         formData.append('products_used', productsUsedValue);
         formData.append('product_categorization', data.product_categorization || '');
@@ -67,7 +128,7 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
             formData.append('thumbnail', data.thumbnail);
         }
         formData.append('_method', 'PUT');
-        
+
         // Use router directly to send FormData
         router.post(route('stocks.update', stockNo), formData, {
             forceFormData: true,
@@ -121,6 +182,51 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
         }
     };
 
+    const handleMetalChange = (metalType: string, checked: boolean) => {
+        const currentMetals = (data.metal as MetalWithGrams) || {};
+        if (checked) {
+            setData('metal', {
+                ...currentMetals,
+                [metalType]: { grams: '', current_rate: '' }
+            });
+        } else {
+            const updated = { ...currentMetals };
+            delete updated[metalType];
+            setData('metal', updated);
+        }
+    };
+
+    const handleMetalGramsChange = (metalType: string, grams: string) => {
+        const currentMetals = (data.metal as MetalWithGrams) || {};
+        const existing = currentMetals[metalType] || { grams: '', current_rate: '' };
+        setData('metal', {
+            ...currentMetals,
+            [metalType]: {
+                ...existing,
+                grams
+            }
+        });
+    };
+
+    const handleMetalCurrentRateChange = (metalType: string, currentRate: string) => {
+        const currentMetals = (data.metal as MetalWithGrams) || {};
+        const existing = currentMetals[metalType] || { grams: '', current_rate: '' };
+        setData('metal', {
+            ...currentMetals,
+            [metalType]: {
+                ...existing,
+                current_rate: currentRate
+            }
+        });
+    };
+
+    const metalOptions = [
+        'White Gold (WG)',
+        'Yellow Gold (YG)',
+        'Platinum',
+        '9kt',
+    ];
+
     const productOptions = [
         'Diamonds',
         'Emeralds Z',
@@ -161,57 +267,8 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
                 <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
                     <Card className="p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Stock Information</h3>
-                        
+
                         <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="metal">Metal Type</Label>
-                                {/* Select for metal type */}
-                                
-                                <select
-                                    id="metal"
-                                    name="metal"
-                                    value={data.metal}
-                                    onChange={(e) => setData('metal', e.target.value)}
-                                    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.metal ? 'border-red-500' : ''}`}
-                                >
-                                    <option value="">Select metal type</option>
-                                    <option value="White Gold (WG)">White Gold (WG)</option>
-                                    <option value="Yellow Gold (YG)">Yellow Gold (YG)</option>
-                                    <option value="Platinum">Platinum</option>
-                                    <option value="9kt">9kt</option>
-                                </select>
-                                {errors.metal && <p className="text-red-500 text-sm mt-1">{errors.metal}</p>}
-                            </div>
-
-                            <div>
-                                <Label>Products Used</Label>
-                                <div className="mt-2 border rounded-lg p-4 bg-gray-50">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {productOptions.map((product) => {
-                                            const isChecked = Array.isArray(data.products_used) && data.products_used.includes(product);
-                                            return (
-                                                <div key={product} className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id={`product-${product}`}
-                                                        checked={isChecked}
-                                                        onCheckedChange={(checked) => 
-                                                            handleProductChange(product, !!checked)
-                                                        }
-                                                    />
-                                                    <Label 
-                                                        htmlFor={`product-${product}`} 
-                                                        className="text-sm font-normal cursor-pointer"
-                                                    >
-                                                        {product}
-                                                    </Label>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                {errors.products_used && <p className="text-red-500 text-sm mt-1">{errors.products_used}</p>}
-                            </div>
-
                             <div>
                                 <Label htmlFor="product_categorization">Product Category</Label>
                                 <select
@@ -232,13 +289,107 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
                             </div>
 
                             <div>
-                                <Label htmlFor="thumbnail">Thumbnail Image</Label>
+                                <Label>Stones Used</Label>
+                                <div className="mt-2 border rounded-lg p-4 bg-gray-50">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {productOptions.map((product) => {
+                                            const isChecked = Array.isArray(data.products_used) && data.products_used.includes(product);
+                                            return (
+                                                <div key={product} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`product-${product}`}
+                                                        checked={isChecked}
+                                                        onCheckedChange={(checked) =>
+                                                            handleProductChange(product, !!checked)
+                                                        }
+                                                    />
+                                                    <Label
+                                                        htmlFor={`product-${product}`}
+                                                        className="text-sm font-normal cursor-pointer"
+                                                    >
+                                                        {product}
+                                                    </Label>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                {errors.products_used && <p className="text-red-500 text-sm mt-1">{errors.products_used}</p>}
+                            </div>
+
+                            <div>
+                                <Label>Metal Types with Grams</Label>
+                                <div className="mt-2 border rounded-lg p-4 bg-gray-50">
+                                    <div className="space-y-3">
+                                        {metalOptions.map((metalType) => {
+                                            const isChecked = metalType in (data.metal as MetalWithGrams || {});
+                                            const metalData = (data.metal as MetalWithGrams || {})[metalType] || { grams: '', current_rate: '' };
+                                            const grams = metalData.grams || '';
+                                            const currentRate = metalData.current_rate || '';
+                                            return (
+                                                <div key={metalType} className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200">
+                                                    <Checkbox
+                                                        id={`metal-${metalType}`}
+                                                        checked={isChecked}
+                                                        onCheckedChange={(checked) =>
+                                                            handleMetalChange(metalType, !!checked)
+                                                        }
+                                                    />
+                                                    <Label
+                                                        htmlFor={`metal-${metalType}`}
+                                                        className="text-sm font-medium cursor-pointer flex-1"
+                                                    >
+                                                        {metalType}
+                                                    </Label>
+                                                    {isChecked && (
+                                                        <div className="flex items-center space-x-4">
+                                                            <div className="flex items-center space-x-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.001"
+                                                                    min="0"
+                                                                    value={grams}
+                                                                    onChange={(e) => handleMetalGramsChange(metalType, e.target.value)}
+                                                                    placeholder="0.000"
+                                                                    className="w-24"
+                                                                />
+                                                                <span className="text-sm text-gray-600">g</span>
+                                                            </div>
+                                                            {/* <div className="flex items-center space-x-2">
+                                                                <Label className="text-xs text-gray-600 whitespace-nowrap">
+                                                                    Current rate
+                                                                </Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    value={currentRate}
+                                                                    onChange={(e) => handleMetalCurrentRateChange(metalType, e.target.value)}
+                                                                    placeholder="0.00"
+                                                                    className="w-28"
+                                                                />
+                                                            </div> */}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                {errors.metal && <p className="text-red-500 text-sm mt-1">{errors.metal}</p>}
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Select metal types and enter estimated grams for each
+                                </p>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="thumbnail">Reference Image</Label>
                                 <div className="mt-2">
                                     {stock?.thumbnail && (
                                         <div className="mb-4">
                                             <p className="text-sm text-gray-600 mb-2">Current Thumbnail:</p>
-                                            <img 
-                                                src={`/storage/${stock.thumbnail}`} 
+                                            <img
+                                                src={`/storage/${stock.thumbnail}`}
                                                 alt={`Stock ${stockNo}`}
                                                 className="max-w-md h-auto rounded-lg border border-gray-200 shadow-sm w-[150px]"
                                             />
@@ -248,11 +399,10 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
                                         onDragOver={handleDragOver}
                                         onDragLeave={handleDragLeave}
                                         onDrop={handleDrop}
-                                        className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-                                            isDragging
+                                        className={`border-2 border-dashed rounded-lg p-6 transition-colors ${isDragging
                                                 ? 'border-emerald-500 bg-emerald-50'
                                                 : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex flex-col items-center justify-center space-y-4">
                                             <Upload className={`h-8 w-8 ${isDragging ? 'text-emerald-600' : 'text-gray-400'}`} />
@@ -261,7 +411,7 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
                                                     {isDragging ? 'Drop image here' : 'Drag and drop an image here, or click to select'}
                                                 </p>
                                                 <p className="text-xs text-gray-500 mt-1">
-                                                    Accepted formats: JPEG, PNG, JPG, GIF, WEBP (Max: 2MB)
+                                                    Accepted formats: JPEG, PNG, JPG, GIF, WEBP (Max: 10MB)
                                                 </p>
                                             </div>
                                             <label

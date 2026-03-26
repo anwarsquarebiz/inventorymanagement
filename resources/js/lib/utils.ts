@@ -29,3 +29,16 @@ export function formatDate(date: string | Date): string {
   
   return `${dateStr} ${timeStr}`;
 }
+
+export function formatDateOnly(date: string | Date): string {
+  if (!date) return '';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  const dateStr = dateObj.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  return dateStr;
+}

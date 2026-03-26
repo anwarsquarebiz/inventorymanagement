@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Voucher extends Model
+class MetalVoucher extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // Status constants
+    // Status constants (same as Voucher for metal transactions)
+    const STATUS_PENDING_APPROVAL = 'pending_approval';
     const STATUS_PENDING_VERIFICATION = 'pending_verification';
     const STATUS_IN_TRANSIT = 'in_transit';
     const STATUS_UNDER_REVIEW = 'under_review';
@@ -18,13 +19,16 @@ class Voucher extends Model
     const STATUS_REJECTED = 'rejected';
     const STATUS_COMPLETED = 'completed';
 
+    protected $table = 'metal_vouchers';
+
+    protected $attributes = [
+        'status' => self::STATUS_PENDING_APPROVAL,
+    ];
+
     protected $fillable = [
         'voucher_no',
-        'stock_no',
         'date_given',
-        'date_delivery',
         'status',
-        'person_in_charge',
         'created_by',
         'approved_by',
         'approved_at',
@@ -33,22 +37,13 @@ class Voucher extends Model
 
     protected $casts = [
         'date_given' => 'date',
-        'date_delivery' => 'date',
         'approved_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Get the person in charge of this voucher
-     */
-    public function personInCharge()
-    {
-        return $this->belongsTo(User::class, 'person_in_charge');
-    }
-
-    /**
-     * Get the user who created this voucher
+     * Get the user who created this metal voucher
      */
     public function creator()
     {
@@ -56,7 +51,7 @@ class Voucher extends Model
     }
 
     /**
-     * Get the user who approved this voucher
+     * Get the user who approved this metal voucher
      */
     public function approver()
     {
@@ -64,39 +59,23 @@ class Voucher extends Model
     }
 
     /**
-     * Get voucher items
+     * Get metal voucher items
      */
     public function items()
     {
-        return $this->hasMany(VoucherItem::class);
+        return $this->hasMany(MetalVoucherItem::class);
     }
 
     /**
-     * Get voucher activities
+     * Get metal voucher activities
      */
     public function activities()
     {
-        return $this->hasMany(VoucherActivity::class)->orderBy('timestamp', 'desc');
+        return $this->hasMany(MetalVoucherActivity::class)->orderBy('timestamp', 'desc');
     }
 
     /**
-     * Get the stock for this voucher
-     */
-    public function stock()
-    {
-        return $this->belongsTo(Stock::class, 'stock_no', 'stock_no');
-    }
-
-    /**
-     * Get total pieces in this voucher
-     */
-    public function getTotalPiecesAttribute()
-    {
-        return $this->items()->sum('pcs');
-    }
-
-    /**
-     * Get total weight in this voucher
+     * Get total weight in this metal voucher
      */
     public function getTotalWeightAttribute()
     {
@@ -104,7 +83,7 @@ class Voucher extends Model
     }
 
     /**
-     * Scope for vouchers by status
+     * Scope for metal vouchers by status
      */
     public function scopeByStatus($query, $status)
     {
@@ -112,15 +91,7 @@ class Voucher extends Model
     }
 
     /**
-     * Scope for vouchers by person in charge
-     */
-    public function scopeByPersonInCharge($query, $userId)
-    {
-        return $query->where('person_in_charge', $userId);
-    }
-
-    /**
-     * Scope for vouchers by date range
+     * Scope for metal vouchers by date range
      */
     public function scopeByDateRange($query, $startDate, $endDate)
     {
@@ -133,6 +104,7 @@ class Voucher extends Model
     public static function getStatuses(): array
     {
         return [
+            self::STATUS_PENDING_APPROVAL => 'Pending Approval',
             self::STATUS_PENDING_VERIFICATION => 'Pending Verification',
             self::STATUS_IN_TRANSIT => 'In Transit',
             self::STATUS_UNDER_REVIEW => 'Under Review',
@@ -151,37 +123,32 @@ class Voucher extends Model
     }
 
     /**
-     * Boot method to generate voucher number
+     * Boot method to generate metal voucher number (MV-YYYY-NNN)
      */
     protected static function boot()
     {
         parent::boot();
 
-        static::creating(function ($voucher) {
-            if (empty($voucher->voucher_no)) {
+        static::creating(function ($metalVoucher) {
+            if (empty($metalVoucher->voucher_no)) {
                 $year = date('Y');
-                
-                // Get the last voucher number including soft-deleted records
-                // to ensure we continue from the highest number
+
                 $lastVoucher = self::withTrashed()
-                    ->where('voucher_no', 'like', "VOC-{$year}-%")
+                    ->where('voucher_no', 'like', "MV-{$year}-%")
                     ->orderBy('voucher_no', 'desc')
                     ->first();
-                
+
                 $nextNumber = 1;
                 if ($lastVoucher) {
                     $lastNumber = (int) substr($lastVoucher->voucher_no, -3);
                     $nextNumber = $lastNumber + 1;
                 }
-                
-                // Generate the voucher number
-                $voucher->voucher_no = sprintf('VOC-%s-%03d', $year, $nextNumber);
-                
-                // Ensure uniqueness by checking if the number already exists (including soft-deleted)
-                // If it exists, increment until we find an available number
-                while (self::withTrashed()->where('voucher_no', $voucher->voucher_no)->exists()) {
+
+                $metalVoucher->voucher_no = sprintf('MV-%s-%03d', $year, $nextNumber);
+
+                while (self::withTrashed()->where('voucher_no', $metalVoucher->voucher_no)->exists()) {
                     $nextNumber++;
-                    $voucher->voucher_no = sprintf('VOC-%s-%03d', $year, $nextNumber);
+                    $metalVoucher->voucher_no = sprintf('MV-%s-%03d', $year, $nextNumber);
                 }
             }
         });

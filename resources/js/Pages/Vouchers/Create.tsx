@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-    Plus, 
-    Trash2, 
+import { Switch } from '@/components/ui/switch'
+import {
+    Plus,
+    Trash2,
     ArrowLeft,
     Save,
     Search,
@@ -43,12 +44,27 @@ interface CreateVoucherProps {
         id: number
         name: string
     }>
+    existingStockNumbers: string[]
 }
 
-export default function Create({ users, shapes, products }: CreateVoucherProps) {
+export default function Create({ users, shapes, products, existingStockNumbers }: CreateVoucherProps) {
     const [shapeSearchTerms, setShapeSearchTerms] = useState<Record<string, string>>({});
     const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
     const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // ST = STOCK ITEMS, D = ORDER ITEMS, R = REPAIR ITEMS
+    const [itemtype, setItemtype] = useState<string>('ST');
+    const [itemtypeOptions] = useState<string[]>(['ST', 'D', 'R']);
+
+    const [customerInitials, setCustomerInitials] = useState<string>('');
+    const [stockNumber, setStockNumber] = useState<string>('');
+
+    // Make data.stock_no = itemtype + customerInitials + stockNumber
+    useEffect(() => {
+        setData('stock_no', itemtype + (customerInitials ? '-' + customerInitials.toUpperCase() : '') + (stockNumber ? '-' + stockNumber : ''));
+    }, [itemtype, customerInitials, stockNumber]);
+
+    const [stockInputMultipart, setStockInputMultipart] = useState<boolean>(false);
 
     const { data, setData, post, processing, errors } = useForm({
         stock_no: '',
@@ -113,10 +129,10 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
             return [];
         }
 
-        const selectedProductId = typeof item.product_id === 'string' 
-            ? parseInt(item.product_id, 10) 
+        const selectedProductId = typeof item.product_id === 'string'
+            ? parseInt(item.product_id, 10)
             : item.product_id;
-        
+
         if (isNaN(selectedProductId)) {
             return [];
         }
@@ -199,18 +215,92 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Voucher Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
-                                <Label htmlFor="stock_no">Stock No</Label>
-                                <Input
-                                    id="stock_no"
-                                    value={data.stock_no}
-                                    onChange={(e) => setData('stock_no', e.target.value)}
-                                    placeholder="STK-001"
-                                    className={errors.stock_no ? 'border-red-500' : ''}
-                                />
+                                <Label htmlFor="stock_no" className="flex items-center gap-2 mb-2">
+                                    Stock No
+                                    <div className="flex items-center gap-2 ml-2">
+                                        <Switch
+                                            checked={stockInputMultipart}
+                                            onCheckedChange={setStockInputMultipart}
+                                        />
+                                        <span className="text-sm text-gray-600">{stockInputMultipart ? 'New stock item' : 'Old stock item'}</span>
+                                    </div>
+                                </Label>
+                                <div className="relative">
+                                    {stockInputMultipart ? (
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                id="itemtype"
+                                                value={itemtype}
+                                                onChange={(e) => setItemtype(e.target.value)}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                            >
+                                                {itemtypeOptions.map((option) => (
+                                                    <option key={option} value={option}>{option}</option>
+                                                ))}
+                                            </select>
+                                            {(itemtype === 'D' || itemtype === 'R') && (
+                                                <input
+                                                    id="customer_initials"
+                                                    value={customerInitials}
+                                                    onChange={(e) => setCustomerInitials(e.target.value)}
+                                                    placeholder="Customer Initials"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                                />
+                                            )}
+                                            <input
+                                                id="stock_number"
+                                                value={stockNumber}
+                                                onChange={(e) => {
+                                                    const numeric = e.target.value.replace(/\D/g, '');
+                                                    setStockNumber(numeric);
+                                                }}
+                                                placeholder="Stock Number"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    ) : (
+
+                                        <div className="flex items-center gap-2">
+                                        {/* 
+                                        <div className="flex items-center gap-2">
+                                            {data.stock_no}
+                                        </div> 
+                                        */}
+
+                                            <Input
+                                                id="stock_no"
+                                                list="stock_numbers_list"
+                                                value={data.stock_no}
+                                                onChange={(e) => setData('stock_no', e.target.value)}
+                                                placeholder="Select or type stock number"
+                                                className={errors.stock_no ? 'border-red-500' : ''}
+                                            />
+
+                                            <datalist id="stock_numbers_list">
+                                                {existingStockNumbers.map((stockNo) => (
+                                                    <option key={stockNo} value={stockNo} />
+                                                ))}
+                                            </datalist>
+                                        </div>
+
+                                    )}
+
+
+                                </div>
                                 {errors.stock_no && <p className="text-red-500 text-sm mt-1">{errors.stock_no}</p>}
+                                {existingStockNumbers.length > 0 && (
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        {/* Make it a pill */}
+                                        <span className="bg-emerald-100 text-emerald-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-emerald-900 dark:text-emerald-300">
+                                            Stock No: {data.stock_no}
+                                        </span>
+                                        {existingStockNumbers.length} existing stock number{existingStockNumbers.length !== 1 ? 's' : ''} available
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <Label htmlFor="date_given">Date Given</Label>
+                                <div className="h-2"></div>
                                 <Input
                                     id="date_given"
                                     type="date"
@@ -222,6 +312,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                             </div>
                             <div>
                                 <Label htmlFor="date_delivery">Date Delivery</Label>
+                                <div className="h-2"></div>
                                 <Input
                                     id="date_delivery"
                                     type="date"
@@ -239,9 +330,8 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                     id="person_in_charge"
                                     value={data.person_in_charge}
                                     onChange={(e) => setData('person_in_charge', e.target.value)}
-                                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
-                                        errors.person_in_charge ? 'border-red-500' : ''
-                                    }`}
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${errors.person_in_charge ? 'border-red-500' : ''
+                                        }`}
                                 >
                                     <option value="">Select person</option>
                                     {users.map((user) => (
@@ -266,7 +356,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                     {/* Line Items */}
                     <Card className="p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Line Items</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">Packets</h3>
                             <Button
                                 type="button"
                                 onClick={addLineItem}
@@ -281,7 +371,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                             {data.items.map((item, index) => (
                                 <div key={item.id} className="p-4 border border-gray-200 rounded-lg">
                                     <div className="flex justify-between items-center mb-3">
-                                            <span className="text-sm font-medium text-gray-700">Item {index + 1}</span>
+                                        <span className="text-sm font-medium text-gray-700">Item {index + 1}</span>
                                         {data.items.length > 1 && (
                                             <Button
                                                 type="button"
@@ -294,7 +384,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                             </Button>
                                         )}
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
                                         <div>
                                             <Label>Product</Label>
@@ -311,7 +401,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                         </div>
                                         <div>
                                             <Label>Shape</Label>
-                                            <div 
+                                            <div
                                                 ref={(el) => { dropdownRefs.current[item.id] = el; }}
                                                 className="relative"
                                             >
@@ -319,18 +409,17 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                                     type="button"
                                                     onClick={() => item.product_id && toggleDropdown(item.id)}
                                                     disabled={!item.product_id}
-                                                    className={`w-full px-3 py-2 text-left border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent flex items-center justify-between ${
-                                                        !item.product_id 
-                                                            ? 'bg-gray-100 cursor-not-allowed opacity-60' 
-                                                            : 'bg-white hover:border-gray-400'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 text-left border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent flex items-center justify-between ${!item.product_id
+                                                        ? 'bg-gray-100 cursor-not-allowed opacity-60'
+                                                        : 'bg-white hover:border-gray-400'
+                                                        }`}
                                                 >
                                                     <span className={item.shape ? 'text-gray-900' : 'text-gray-500'}>
                                                         {item.shape || (item.product_id ? 'Select shape' : 'Select product first')}
                                                     </span>
                                                     <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${openDropdowns[item.id] ? 'transform rotate-180' : ''}`} />
                                                 </button>
-                                                
+
                                                 {openDropdowns[item.id] && item.product_id && (
                                                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
                                                         {/* Search Input */}
@@ -360,7 +449,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {/* Options List */}
                                                         <div className="max-h-48 overflow-y-auto">
                                                             {getFilteredShapes(item.id).length === 0 ? (
@@ -378,9 +467,8 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                                                             key={shape.id || shape.name}
                                                                             type="button"
                                                                             onClick={() => handleShapeSelect(item.id, String(shape.name))}
-                                                                            className={`w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none ${
-                                                                                isSelected ? 'bg-emerald-100 text-emerald-900 font-medium' : 'text-gray-900'
-                                                                            }`}
+                                                                            className={`w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none ${isSelected ? 'bg-emerald-100 text-emerald-900 font-medium' : 'text-gray-900'
+                                                                                }`}
                                                                         >
                                                                             {String(shape.name)}
                                                                         </button>
@@ -392,7 +480,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                                 )}
                                             </div>
                                         </div>
-                                        
+
                                         <div>
                                             <Label>Pieces</Label>
                                             <Input
@@ -403,7 +491,7 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                                 min="0"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <Label>Weight (ct)</Label>
                                             <Input
@@ -415,16 +503,19 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                                                 min="0"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <Label>Code</Label>
                                             <Input
                                                 value={item.code}
-                                                onChange={(e) => updateLineItem(item.id, 'code', e.target.value)}
+                                                onChange={(e) => {
+                                                    const filteredValue = e.target.value.replace(/[^a-zA-Z]/g, '');
+                                                    updateLineItem(item.id, 'code', filteredValue);
+                                                }}
                                                 placeholder="Code"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <Label>Remarks</Label>
                                             <Input
@@ -485,6 +576,6 @@ export default function Create({ users, shapes, products }: CreateVoucherProps) 
                     </div>
                 </form>
             </div>
-        </AppLayout>
+        </AppLayout >
     )
 }

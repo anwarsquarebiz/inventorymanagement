@@ -39,18 +39,35 @@ class StockController extends Controller
         ]);
 
         $request->validate([
-            'metal' => 'nullable|string|max:255',
+            'metal' => 'nullable|string',
             'products_used' => 'nullable|string|max:255',
             'product_categorization' => 'nullable|string|max:255',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
         ]);
 
         $stock = Stock::firstOrNew(['stock_no' => $stock_no]);
         $stock->stock_no = $stock_no;
 
-        // Handle metal field - always update from request
+        // Handle metal field - store as JSON string
         $metalValue = $request->input('metal');
-        $stock->metal = $metalValue !== null && $metalValue !== '' ? trim($metalValue) : null;
+        if ($metalValue !== null && $metalValue !== '') {
+            $metalValue = trim($metalValue);
+            // Validate JSON if not empty
+            if ($metalValue !== '') {
+                $decoded = json_decode($metalValue, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    // Valid JSON, store as is
+                    $stock->metal = $metalValue;
+                } else {
+                    // Invalid JSON, set to null
+                    $stock->metal = null;
+                }
+            } else {
+                $stock->metal = null;
+            }
+        } else {
+            $stock->metal = null;
+        }
 
         // Handle products_used field
         $productsUsedValue = $request->input('products_used');
