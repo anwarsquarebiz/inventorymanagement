@@ -94,7 +94,9 @@ export default function LossAdjustment({ metals, default_date_from, default_date
         const base = parseFloat(data.monthly_debit_base);
         const p = parseFloat(data.percentage);
         if (Number.isFinite(base) && base > 0 && Number.isFinite(p) && p >= 0.01 && p <= 100) {
-            setData('adjustment_grams', round2((base * p) / 100).toFixed(2));
+            const grams = (base * p) / 100;
+            // Up to 6 decimals for prefilled value; avoid step="0.01" rounding issues when user edits further.
+            setData('adjustment_grams', Number(grams.toFixed(6)).toString());
         }
     }, [isPercentageMode, data.monthly_debit_base, data.percentage]);
 
@@ -290,8 +292,8 @@ export default function LossAdjustment({ metals, default_date_from, default_date
                                         <Input
                                             id="adjustment_grams"
                                             type="number"
-                                            step="0.01"
-                                            min="0.01"
+                                            step="any"
+                                            min="0"
                                             inputMode="decimal"
                                             value={data.adjustment_grams}
                                             onChange={(e) => setData('adjustment_grams', e.target.value)}
@@ -351,8 +353,8 @@ export default function LossAdjustment({ metals, default_date_from, default_date
                                                     <td className="p-2">
                                                         <Input
                                                             type="number"
-                                                            step="0.01"
-                                                            min="0.01"
+                                                            step="any"
+                                                            min="0"
                                                             value={row.grams_used}
                                                             onChange={(e) => setRepairRow(index, { grams_used: e.target.value })}
                                                             placeholder="0.00"
@@ -413,8 +415,4 @@ export default function LossAdjustment({ metals, default_date_from, default_date
             </div>
         </AppLayout>
     );
-}
-
-function round2(n: number): number {
-    return Math.round(n * 100) / 100;
 }

@@ -121,7 +121,7 @@ class MetalController extends Controller
                 return;
             }
             $debitEntries[] = [
-                'date' => $stock->updated_at?->format('Y-m-d'),
+                'date' => $stock->created_at?->format('Y-m-d'),
                 'particulars' => "Stock {$stock->stock_no}",
                 'credit' => 0,
                 'debit' => $grams,
@@ -264,7 +264,7 @@ class MetalController extends Controller
         // Debit entries (stock usage from stocks.metal JSON) - only include stocks up to lastMonthEnd.
         $debitEntries = [];
         Stock::query()
-            ->whereDate('updated_at', '<=', $lastMonthEndYmd)
+            ->whereDate('created_at', '<=', $lastMonthEndYmd)
             // `stocks` may not have an `id` column (primary key can be `stock_no`),
             // so sort by a stable existing column.
             ->orderBy('stock_no')
@@ -281,7 +281,7 @@ class MetalController extends Controller
                 }
 
                 $debitEntries[] = [
-                    'date' => $stock->updated_at?->format('Y-m-d'),
+                    'date' => $stock->created_at?->format('Y-m-d'),
                     'particulars' => "Stock {$stock->stock_no}",
                     'credit' => 0.0,
                     'debit' => (float) $grams,
