@@ -38,4 +38,9 @@ class Metal extends Model
     {
         return $this->hasMany(MetalVoucherItem::class);
     }
+
+    public function monthlySummaries()
+    {
+        return $this->hasMany(MetalMonthlySummary::class);
+    }
 }
