@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Metal;
 use App\Models\MetalVoucherItem;
 use App\Models\Stock;
+use App\Models\Voucher;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,6 +20,55 @@ use App\Services\MetalMonthlyDebitCalculator;
 
 class MetalController extends Controller
 {
+    /**
+     * Debit ledger rows from stocks whose vouchers are all completed with date_delivery.
+     */
+    private static function ledgerDebitEntriesFromCompletedStocks(string $metalName, ?string $dateToYmd = null): array
+    {
+        $query = DB::table('vouchers as v')
+            ->join('stocks as s', DB::raw('LOWER(s.stock_no)'), '=', DB::raw('LOWER(v.stock_no)'))
+            ->whereNull('v.deleted_at')
+            ->groupBy('s.stock_no', 's.metal')
+            ->havingRaw('COUNT(*) > 0')
+            ->havingRaw(
+                'COUNT(DISTINCT CASE WHEN v.status != ? THEN v.id END) = 0',
+                [Voucher::STATUS_COMPLETED]
+            )
+            ->havingRaw('COUNT(DISTINCT CASE WHEN v.date_delivery IS NULL THEN v.id END) = 0')
+            ->select([
+                's.stock_no',
+                's.metal',
+                DB::raw('MAX(v.date_delivery) as date_delivery'),
+            ]);
+
+        if ($dateToYmd !== null) {
+            $query->havingRaw('MAX(v.date_delivery) <= ?', [$dateToYmd]);
+        }
+
+        $debitEntries = [];
+
+        foreach ($query->get() as $row) {
+            $stock = new Stock(['stock_no' => $row->stock_no, 'metal' => $row->metal]);
+            $data = $stock->metal_data;
+            if (! is_array($data) || ! isset($data[$metalName]) || ! is_array($data[$metalName])) {
+                continue;
+            }
+            $grams = isset($data[$metalName]['grams']) ? (float) $data[$metalName]['grams'] : 0;
+            if ($grams <= 0) {
+                continue;
+            }
+            $debitEntries[] = [
+                'date' => Carbon::parse($row->date_delivery)->format('Y-m-d'),
+                'particulars' => "Stock {$row->stock_no}",
+                'credit' => 0,
+                'debit' => $grams,
+                'type' => 'debit',
+            ];
+        }
+
+        return $debitEntries;
+    }
+
     /**
      * Map a metal voucher line to a ledger row (negative weight → negative debit / loss adjustment).
      */
@@ -109,25 +160,8 @@ class MetalController extends Controller
             ->map(fn (MetalVoucherItem $item) => self::ledgerRowFromMetalVoucherItem($item))
             ->all();
 
-        // Debit entries: from stocks where metal_data contains this metal name
-        $debitEntries = [];
-        Stock::all()->each(function (Stock $stock) use ($metalName, &$debitEntries) {
-            $data = $stock->metal_data;
-            if (! is_array($data) || ! isset($data[$metalName]) || ! is_array($data[$metalName])) {
-                return;
-            }
-            $grams = isset($data[$metalName]['grams']) ? (float) $data[$metalName]['grams'] : 0;
-            if ($grams <= 0) {
-                return;
-            }
-            $debitEntries[] = [
-                'date' => $stock->created_at?->format('Y-m-d'),
-                'particulars' => "Stock {$stock->stock_no}",
-                'credit' => 0,
-                'debit' => $grams,
-                'type' => 'debit',
-            ];
-        });
+        // Debit entries: stocks where all vouchers are completed with date_delivery
+        $debitEntries = self::ledgerDebitEntriesFromCompletedStocks($metalName);
 
         // Merge and sort by date, then by type (credit first for same date)
         // $allEntries = collect(array_merge($creditEntries, $debitEntries))
@@ -261,33 +295,8 @@ class MetalController extends Controller
             ->map(fn (MetalVoucherItem $item) => self::ledgerRowFromMetalVoucherItem($item))
             ->all();
 
-        // Debit entries (stock usage from stocks.metal JSON) - only include stocks up to lastMonthEnd.
-        $debitEntries = [];
-        Stock::query()
-            ->whereDate('created_at', '<=', $lastMonthEndYmd)
-            // `stocks` may not have an `id` column (primary key can be `stock_no`),
-            // so sort by a stable existing column.
-            ->orderBy('stock_no')
-            ->get()
-            ->each(function (Stock $stock) use ($metalName, &$debitEntries) {
-                $data = $stock->metal_data;
-                if (! is_array($data) || ! isset($data[$metalName]) || ! is_array($data[$metalName])) {
-                    return;
-                }
-
-                $grams = isset($data[$metalName]['grams']) ? (float) $data[$metalName]['grams'] : 0;
-                if ($grams <= 0) {
-                    return;
-                }
-
-                $debitEntries[] = [
-                    'date' => $stock->created_at?->format('Y-m-d'),
-                    'particulars' => "Stock {$stock->stock_no}",
-                    'credit' => 0.0,
-                    'debit' => (float) $grams,
-                    'type' => 'debit',
-                ];
-            });
+        // Debit entries: completed stocks with date_delivery up to lastMonthEnd.
+        $debitEntries = self::ledgerDebitEntriesFromCompletedStocks($metalName, $lastMonthEndYmd);
 
         // Merge + sort exactly like the ledger page (by date only).
         $allEntries = collect(array_merge($creditEntries, $debitEntries))
