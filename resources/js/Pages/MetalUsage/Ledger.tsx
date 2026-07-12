@@ -194,7 +194,7 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                                     <th className="text-left p-3 font-medium text-gray-900">Particulars</th>
                                     <th className="text-right p-3 font-medium text-gray-900">Credit (g)</th>
                                     <th className="text-right p-3 font-medium text-gray-900">Debit (g)</th>
-                                    <th className="text-right p-3 font-medium text-gray-900">Balance (g)</th>
+                                    {/* <th className="text-right p-3 font-medium text-gray-900">Balance (g)</th> */}
                                 </tr>
                             </thead>
                             <tbody>
@@ -217,7 +217,7 @@ export default function Ledger({ metal, entries, pagination, filters }: MetalUsa
                                             <td className="p-3 text-right tabular-nums text-gray-600">
                                                 {row.debit !== 0 ? formatWeight(row.debit) : '–'}
                                             </td>
-                                            <td className="p-3 text-right tabular-nums font-medium">{formatWeight(row.balance)}</td>
+                                            {/* <td className="p-3 text-right tabular-nums font-medium">{formatWeight(row.balance)}</td> */}
                                         </tr>
                                     ))
                                 )}
