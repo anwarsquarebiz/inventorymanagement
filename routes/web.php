@@ -13,6 +13,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProductCategorizationController;
 use App\Http\Controllers\MetalController;
+use App\Http\Controllers\MetalMonthlySummaryController;
 use App\Http\Controllers\MetalVoucherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -76,6 +77,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/metal-usage/{metal}/monthly-debit', [MetalController::class, 'monthlyDebit'])->name('metal-usage.monthly-debit');
     Route::get('/metal-usage/{metal}', [MetalController::class, 'ledger'])->name('metal-usage.ledger');
     Route::get('/metal-usage/{metal}/statement/export-pdf', [MetalController::class, 'exportStatementPdf'])->name('metal-usage.statement.export-pdf');
+
+    // Metal Monthly Summaries
+    Route::get('/metal-monthly-summaries', [MetalMonthlySummaryController::class, 'index'])->name('metal-monthly-summaries.index');
+    Route::post('/metal-monthly-summaries', [MetalMonthlySummaryController::class, 'store'])->name('metal-monthly-summaries.store');
+    Route::put('/metal-monthly-summaries/{metalMonthlySummary}', [MetalMonthlySummaryController::class, 'update'])->name('metal-monthly-summaries.update');
 
     // Metal Vouchers
     Route::get('/metal-vouchers/loss-adjustment', [MetalVoucherController::class, 'createLossAdjustment'])->name('metal-vouchers.loss-adjustment.create');

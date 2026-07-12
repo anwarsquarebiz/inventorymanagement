@@ -92,6 +92,13 @@ export default function Sidebar() {
             route: '/metal-usage',
             permission: 'view vouchers'
         },
+        { 
+            id: 'metal-monthly-summaries', 
+            label: 'Monthly Summary', 
+            icon: BarChart2, 
+            route: '/metal-monthly-summaries',
+            permission: 'view vouchers'
+        },
         // { 
         //     id: 'reconciliation', 
         //     label: 'Reconciliation', 
