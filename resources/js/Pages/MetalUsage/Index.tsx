@@ -47,10 +47,10 @@ export default function Index({ metals }: MetalUsageIndexProps) {
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50">
                                     <th className="text-left p-4 font-medium text-gray-900">Metal</th>
-                                    <th className="text-right p-4 font-medium text-gray-900">Credit (g)</th>
-                                    <th className="text-right p-4 font-medium text-gray-900">Debit (g)</th>
+                                    {/* <th className="text-right p-4 font-medium text-gray-900">Credit (g)</th>
+                                    <th className="text-right p-4 font-medium text-gray-900">Debit (g)</th> */}
                                     <th className="text-right p-4 font-medium text-gray-900">Balance (g)</th>
-                                    <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+                                    <th className="text-right p-4 font-medium text-gray-900">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -64,10 +64,10 @@ export default function Index({ metals }: MetalUsageIndexProps) {
                                     metals.map((metal) => (
                                         <tr key={metal.id} className="border-b border-gray-100 hover:bg-gray-50">
                                             <td className="p-4 font-medium text-gray-900">{metal.name}</td>
-                                            <td className="p-4 text-right text-gray-600 tabular-nums">{formatWeight(metal.total_credit)}</td>
-                                            <td className="p-4 text-right text-gray-600 tabular-nums">{formatWeight(metal.total_debit)}</td>
+                                            {/* <td className="p-4 text-right text-gray-600 tabular-nums">{formatWeight(metal.total_credit)}</td>
+                                            <td className="p-4 text-right text-gray-600 tabular-nums">{formatWeight(metal.total_debit)}</td> */}
                                             <td className="p-4 text-right font-medium tabular-nums">{formatWeight(metal.balance)}</td>
-                                            <td className="p-4">
+                                            <td className="p-4 text-right">
                                                 <Link href={route('metal-usage.ledger', { metal: metal.id })}>
                                                     <Button size="sm" variant="outline">
                                                         <BookOpen className="h-3 w-3 mr-1" />

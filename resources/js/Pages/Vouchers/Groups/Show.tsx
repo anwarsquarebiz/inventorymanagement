@@ -73,11 +73,12 @@ interface Props {
     backSearch?: string | null
     backCategory?: string | null
     backStockPrefix?: string | null
-    backStatus?: string | null
+    backStatus?: string | null,
+    lastDeliveredDate?: string | null
 }
 
-export default function Show({ stockNo, stock, summary, vouchers, items, allCompleted, backPage, backSearch, backCategory, backStockPrefix, backStatus }: Props) {
-
+export default function Show({ stockNo, stock, summary, vouchers, items, allCompleted, backPage, backSearch, backCategory, backStockPrefix, backStatus, lastDeliveredDate }: Props) {
+    console.log('lastDeliveredDate', lastDeliveredDate)
     const [isEditingStockNo, setIsEditingStockNo] = useState(false)
     const [editStockNoValue, setEditStockNoValue] = useState(stockNo)
 
@@ -490,7 +491,7 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                         ) : (
                             <div className="flex items-center text-sm font-medium text-gray-600">
                                 <Check className="h-4 w-4 mr-1 text-emerald-600" />
-                                Completed
+                                Completed - {lastDeliveredDate ? new Date(lastDeliveredDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                             </div>
                         )}
                     </div>

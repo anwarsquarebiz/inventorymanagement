@@ -130,6 +130,9 @@ class VoucherGroupController extends Controller
             })
             : false;
 
+        $lastDeliveredDate = $vouchers->max('date_delivery');
+        $lastDeliveredDate = $lastDeliveredDate ? $lastDeliveredDate : null;
+
         $backPage = $request->integer('page', 1);
         $backSearch = trim((string) $request->get('search', ''));
         $backCategory = trim((string) $request->get('category', ''));
@@ -148,6 +151,7 @@ class VoucherGroupController extends Controller
             'backCategory' => $backCategory !== '' ? $backCategory : null,
             'backStockPrefix' => $backStockPrefix !== '' ? $backStockPrefix : null,
             'backStatus' => $backStatus !== '' ? $backStatus : null,
+            'lastDeliveredDate' => $lastDeliveredDate,
         ]);
     }
 
