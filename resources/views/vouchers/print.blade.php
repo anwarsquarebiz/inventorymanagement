@@ -121,7 +121,7 @@
                 <th>Product</th>
                 <th>Shape</th>
                 <th>Pieces</th>
-                <th>Weight (ct)</th>
+                <th>Weight (cts / gms)</th>
                 <th>Code</th>
                 <th>Remarks</th>
             </tr>

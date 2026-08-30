@@ -331,7 +331,7 @@ export default function Show({ voucher, backPage, backSearch }: VoucherShowProps
                                             <th className="text-left py-2 font-medium text-gray-900">Product</th>
                                             <th className="text-left py-2 font-medium text-gray-900">Shape</th>
                                             <th className="text-left py-2 font-medium text-gray-900">Pieces</th>
-                                            <th className="text-left py-2 font-medium text-gray-900">Weight (ct)</th>
+                                            <th className="text-left py-2 font-medium text-gray-900">Weight (cts / gms)</th>
                                             <th className="text-left py-2 font-medium text-gray-900">Code</th>
                                             <th className="text-left py-2 font-medium text-gray-900">Remarks</th>
                                             <th className="text-left py-2 font-medium text-gray-900">Temporary Return</th>

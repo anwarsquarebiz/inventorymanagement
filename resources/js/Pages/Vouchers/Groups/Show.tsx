@@ -505,7 +505,7 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                                     <th className="text-left px-2 py-1 font-medium text-gray-900">Product</th>
                                     <th className="text-left px-2 py-1 font-medium text-gray-900">Shape</th>
                                     <th className="text-left px-2 py-1 font-medium text-gray-900">Pcs</th>
-                                    <th className="text-left px-2 py-1 font-medium text-gray-900">Weight (ct)</th>
+                                    <th className="text-left px-2 py-1 font-medium text-gray-900">Weight (cts / gms)</th>
 
                                     <th className="text-left px-2 py-1 font-medium text-gray-900">Pcs Returned</th>
                                     <th className="text-left px-2 py-1 font-medium text-gray-900">Weight Returned</th>
