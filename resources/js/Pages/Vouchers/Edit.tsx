@@ -425,7 +425,7 @@ export default function Edit({ voucher, users, shapes, products }: VoucherEditPr
                                         </div>
                                         
                                         <div>
-                                            <Label>Weight (ct)</Label>
+                                            <Label>Weight (cts / gms)</Label>
                                             <Input
                                                 type="number"
                                                 step="0.01"

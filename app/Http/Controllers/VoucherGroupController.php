@@ -361,7 +361,7 @@ class VoucherGroupController extends Controller
             $handle = fopen('php://output', 'w');
             // UTF-8 BOM for Excel compatibility
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, ['Stock', 'Voucher No', 'Product', 'Shape', 'Pcs', 'Weight (ct)', 'Code', 'Remarks', 'Temporary Return', 'Thumbnail', 'Metal']);
+            fputcsv($handle, ['Stock', 'Voucher No', 'Product', 'Shape', 'Pcs', 'Weight (cts / gms)', 'Code', 'Remarks', 'Temporary Return', 'Thumbnail', 'Metal']);
             foreach ($rows as $r) {
                 fputcsv($handle, [
                     $r->stock_no,
@@ -418,7 +418,7 @@ class VoucherGroupController extends Controller
             $handle = fopen('php://output', 'w');
             // UTF-8 BOM for Excel compatibility
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, ['Voucher No', 'Date Given', 'Date Delivery', 'Status', 'Product', 'Shape', 'Pcs', 'Weight (ct)', 'Code', 'Remarks', 'Temporary Return']);
+            fputcsv($handle, ['Voucher No', 'Date Given', 'Date Delivery', 'Status', 'Product', 'Shape', 'Pcs', 'Weight (cts / gms)', 'Code', 'Remarks', 'Temporary Return']);
             foreach ($items as $item) {
                 fputcsv($handle, [
                     $item->voucher_no,

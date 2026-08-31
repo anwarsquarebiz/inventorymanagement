@@ -493,7 +493,7 @@ export default function Create({ users, shapes, products, existingStockNumbers }
                                         </div>
 
                                         <div>
-                                            <Label>Weight (ct)</Label>
+                                            <Label>Weight (cts / gms)</Label>
                                             <Input
                                                 type="number"
                                                 step="0.01"
