@@ -42,6 +42,7 @@ class StockController extends Controller
             'metal' => 'nullable|string',
             'products_used' => 'nullable|string|max:255',
             'product_categorization' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
         ]);
 
@@ -76,6 +77,9 @@ class StockController extends Controller
         // Handle product_categorization field
         $productCategorizationValue = $request->input('product_categorization');
         $stock->product_categorization = $productCategorizationValue !== null && $productCategorizationValue !== '' ? trim($productCategorizationValue) : null;
+
+        $notesValue = $request->input('notes');
+        $stock->notes = $notesValue !== null && trim($notesValue) !== '' ? trim($notesValue) : null;
 
         // Handle image upload
         if ($request->hasFile('thumbnail')) {

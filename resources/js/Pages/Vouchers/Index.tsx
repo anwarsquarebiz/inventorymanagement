@@ -25,6 +25,7 @@ interface Voucher {
     stock_no: string;
     date_given: string;
     date_delivery: string;
+    stamping?: string | null;
     status: string;
     total_pieces: number;
     total_weight: number;
@@ -359,6 +360,9 @@ export default function Index({
                                         Status
                                     </th>
                                     <th className="p-4 text-left font-medium text-gray-900">
+                                        Stamping
+                                    </th>
+                                    <th className="p-4 text-left font-medium text-gray-900">
                                         No. of Packets
                                     </th>
                                     {/* <th className="p-4 text-left font-medium text-gray-900">
@@ -400,6 +404,9 @@ export default function Index({
                                         </td> */}
                                         <td className="p-4">
                                             {getStatusBadge(voucher.status)}
+                                        </td>
+                                        <td className="p-4 text-gray-600">
+                                            {voucher.stamping || '-'}
                                         </td>
                                         <td className="p-4">
                                             {voucher.items?.length}

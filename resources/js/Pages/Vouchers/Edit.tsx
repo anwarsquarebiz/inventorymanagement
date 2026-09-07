@@ -12,7 +12,8 @@ import {
     Save,
     Search,
     X,
-    ChevronDown
+    ChevronDown,
+    Upload
 } from 'lucide-react'
 declare const route: any
 
@@ -39,6 +40,8 @@ interface VoucherEditProps {
         stock_no: string
         date_given: string
         date_delivery: string
+        stamping?: string | null
+        hallmark_certificate?: string | null
         person_in_charge: {
             id: number
             name: string
@@ -64,9 +67,10 @@ interface VoucherEditProps {
         id: number
         name: string
     }>
+    stampingOptions?: string[]
 }
 
-export default function Edit({ voucher, users, shapes, products }: VoucherEditProps) {
+export default function Edit({ voucher, users, shapes, products, stampingOptions = ['18 K', '14 K', '9 K', 'PT-950'] }: VoucherEditProps) {
     const [shapeSearchTerms, setShapeSearchTerms] = useState<Record<string, string>>({});
     const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
     const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -82,10 +86,13 @@ export default function Edit({ voucher, users, shapes, products }: VoucherEditPr
         temporary_return: it.temporary_return || false,
     }))
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'put',
         stock_no: voucher.stock_no || '',
         date_given: voucher.date_given?.substring(0, 10) || '',
         date_delivery: voucher.date_delivery?.substring(0, 10) || '',
+        stamping: voucher.stamping || '',
+        hallmark_certificate: null as File | null,
         person_in_charge: String(voucher.person_in_charge.id) || '',
         notes: voucher.notes || '',
         items: initialItems as LineItem[],
@@ -194,7 +201,18 @@ export default function Edit({ voucher, users, shapes, products }: VoucherEditPr
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(route('vouchers.update', voucher.id));
+        post(route('vouchers.update', voucher.id), {
+            forceFormData: true,
+        });
+    };
+
+    const handleHallmarkCertificateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file.type.startsWith('image/')) {
+                setData('hallmark_certificate', file);
+            }
+        }
     };
 
     return (
@@ -268,6 +286,69 @@ export default function Edit({ voucher, users, shapes, products }: VoucherEditPr
                                     ))}
                                 </select>
                                 {errors.person_in_charge && <p className="text-red-500 text-sm mt-1">{errors.person_in_charge}</p>}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <Label htmlFor="stamping">Stamping</Label>
+                                <select
+                                    id="stamping"
+                                    value={data.stamping}
+                                    onChange={(e) => setData('stamping', e.target.value)}
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                                        errors.stamping ? 'border-red-500' : ''
+                                    }`}
+                                >
+                                    <option value="">Select stamping</option>
+                                    {stampingOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                </select>
+                                {errors.stamping && <p className="text-red-500 text-sm mt-1">{errors.stamping}</p>}
+                            </div>
+                            <div>
+                                <Label htmlFor="hallmark_certificate">Hallmark Certificate</Label>
+                                <div className="mt-2">
+                                    {voucher.hallmark_certificate && !data.hallmark_certificate && (
+                                        <div className="mb-4">
+                                            <p className="text-sm text-gray-600 mb-2">Current certificate:</p>
+                                            <img
+                                                src={`/storage/${voucher.hallmark_certificate}`}
+                                                alt="Hallmark certificate"
+                                                className="max-w-md h-auto rounded-lg border border-gray-200 shadow-sm w-[150px]"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="border-2 border-dashed rounded-lg p-4 border-gray-300 bg-gray-50 hover:border-gray-400">
+                                        <div className="flex flex-col items-center justify-center space-y-3">
+                                            <Upload className="h-6 w-6 text-gray-400" />
+                                            <p className="text-sm text-gray-600">Upload hallmark certificate image</p>
+                                            <p className="text-xs text-gray-500">JPEG, PNG, JPG, GIF, WEBP (Max: 10MB)</p>
+                                            <label
+                                                htmlFor="hallmark_certificate"
+                                                className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-white bg-white transition-colors"
+                                            >
+                                                <Upload className="h-4 w-4 mr-2" />
+                                                {data.hallmark_certificate || voucher.hallmark_certificate ? 'Change Image' : 'Browse Files'}
+                                            </label>
+                                            <input
+                                                id="hallmark_certificate"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleHallmarkCertificateChange}
+                                                className="hidden"
+                                            />
+                                        </div>
+                                        {data.hallmark_certificate && (
+                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                <p className="text-sm text-gray-600 mb-1">Selected file:</p>
+                                                <p className="text-sm font-medium text-gray-900">{data.hallmark_certificate.name}</p>
+                                                <p className="text-xs text-gray-500">{(data.hallmark_certificate.size / 1024 / 1024).toFixed(2)} MB</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {errors.hallmark_certificate && <p className="text-red-500 text-sm mt-1">{errors.hallmark_certificate}</p>}
+                                </div>
                             </div>
                         </div>
                         <div className="mt-4">

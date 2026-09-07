@@ -5,6 +5,14 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 import { ArrowLeft, Edit as EditIcon, Download, Check, Pencil, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { usePage } from '@inertiajs/react';
@@ -64,6 +72,7 @@ interface Props {
         metal?: string | null
         products_used?: string | null
         product_categorization?: string | null
+        notes?: string | null
     } | null
     summary: Summary
     allCompleted: boolean
@@ -81,6 +90,9 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
     console.log('lastDeliveredDate', lastDeliveredDate)
     const [isEditingStockNo, setIsEditingStockNo] = useState(false)
     const [editStockNoValue, setEditStockNoValue] = useState(stockNo)
+    const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false)
+    const [completeNotes, setCompleteNotes] = useState(stock?.notes || '')
+    const [isCompleting, setIsCompleting] = useState(false)
 
     const { props } = usePage() as any
     const stockNoError = (props?.errors as Record<string, string> | undefined)?.new_stock_no
@@ -112,6 +124,21 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
             status: backStatus ?? undefined,
         })
         setIsEditingStockNo(false)
+    }
+
+    const handleOpenCompleteModal = () => {
+        setCompleteNotes(stock?.notes || '')
+        setIsCompleteModalOpen(true)
+    }
+
+    const handleSubmitComplete = () => {
+        setIsCompleting(true)
+        router.post(route('vouchers-groups.complete', stockNo), {
+            notes: completeNotes,
+        }, {
+            onFinish: () => setIsCompleting(false),
+            onSuccess: () => setIsCompleteModalOpen(false),
+        })
     }
 
     // Get permissions
@@ -335,7 +362,7 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                 </div>
 
                 {/* Stock Information */}
-                {(stock?.thumbnail || formattedMetal || stock?.products_used || stock?.product_categorization) && (
+                {(stock?.thumbnail || formattedMetal || stock?.products_used || stock?.product_categorization || stock?.notes) && (
                     <Card className="p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Stock Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -411,6 +438,13 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                                 </div>
                             )}
 
+                            {stock?.notes && (
+                                <div className="md:col-span-2">
+                                    <Label>Notes</Label>
+                                    <p className="mt-2 text-gray-900 whitespace-pre-wrap">{stock.notes}</p>
+                                </div>
+                            )}
+
 
 
                         </div>
@@ -430,7 +464,7 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                         </div>
                         <div className="p-4 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600">Total Weight</p>
-                            <p className="text-xl font-semibold text-gray-900">{summary.total_weight.toFixed(2)} ct</p>
+                            <p className="text-xl font-semibold text-gray-900">{summary.total_weight.toFixed(2)} ct / gms</p>
                         </div>
                     </div>
                 </Card>
@@ -474,11 +508,7 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                             hasPermission('complete vouchers') ? (
                                 <Button
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={() => {
-                                        if (confirm('Mark all vouchers for this stock as completed?')) {
-                                            router.post(route('vouchers-groups.complete', stockNo));
-                                        }
-                                    }}
+                                    onClick={handleOpenCompleteModal}
                                 >
                                     <Check className="h-4 w-4 mr-2" />
                                     Complete
@@ -659,6 +689,47 @@ export default function Show({ stockNo, stock, summary, vouchers, items, allComp
                     </div>
                 </Card>
             </div>
+
+            <Dialog open={isCompleteModalOpen} onOpenChange={setIsCompleteModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Complete Stock</DialogTitle>
+                        <DialogDescription>
+                            Mark all vouchers for this stock as completed. Add any notes below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="complete-notes">Notes</Label>
+                        <textarea
+                            id="complete-notes"
+                            value={completeNotes}
+                            onChange={(e) => setCompleteNotes(e.target.value)}
+                            rows={4}
+                            placeholder="Enter notes..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsCompleteModalOpen(false)}
+                            disabled={isCompleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={handleSubmitComplete}
+                            disabled={isCompleting}
+                        >
+                            <Check className="h-4 w-4 mr-2" />
+                            {isCompleting ? 'Completing...' : 'Complete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     )
 }
