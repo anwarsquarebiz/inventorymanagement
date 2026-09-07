@@ -19,6 +19,7 @@ class Stock extends Model
         'metal',
         'products_used',
         'product_categorization',
+        'notes',
     ];
 
     /**

@@ -18,11 +18,18 @@ class Voucher extends Model
     const STATUS_REJECTED = 'rejected';
     const STATUS_COMPLETED = 'completed';
 
+    const STAMPING_18K = '18 K';
+    const STAMPING_14K = '14 K';
+    const STAMPING_9K = '9 K';
+    const STAMPING_PT950 = 'PT-950';
+
     protected $fillable = [
         'voucher_no',
         'stock_no',
         'date_given',
         'date_delivery',
+        'stamping',
+        'hallmark_certificate',
         'status',
         'person_in_charge',
         'created_by',
@@ -139,6 +146,19 @@ class Voucher extends Model
             self::STATUS_IN_USE => 'In Use',
             self::STATUS_REJECTED => 'Rejected',
             self::STATUS_COMPLETED => 'Completed',
+        ];
+    }
+
+    /**
+     * Get available stamping options
+     */
+    public static function getStampingOptions(): array
+    {
+        return [
+            self::STAMPING_18K,
+            self::STAMPING_14K,
+            self::STAMPING_9K,
+            self::STAMPING_PT950,
         ];
     }
 

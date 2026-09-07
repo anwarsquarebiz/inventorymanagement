@@ -13,7 +13,8 @@ import {
     Save,
     Search,
     X,
-    ChevronDown
+    ChevronDown,
+    Upload
 } from 'lucide-react'
 declare const route: any
 
@@ -45,9 +46,10 @@ interface CreateVoucherProps {
         name: string
     }>
     existingStockNumbers: string[]
+    stampingOptions?: string[]
 }
 
-export default function Create({ users, shapes, products, existingStockNumbers }: CreateVoucherProps) {
+export default function Create({ users, shapes, products, existingStockNumbers, stampingOptions = ['18 K', '14 K', '9 K', 'PT-950'] }: CreateVoucherProps) {
     const [shapeSearchTerms, setShapeSearchTerms] = useState<Record<string, string>>({});
     const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
     const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -70,6 +72,8 @@ export default function Create({ users, shapes, products, existingStockNumbers }
         stock_no: '',
         date_given: new Date().toISOString().split('T')[0],
         date_delivery: '',
+        stamping: '',
+        hallmark_certificate: null as File | null,
         person_in_charge: '',
         notes: '',
         items: [
@@ -189,7 +193,18 @@ export default function Create({ users, shapes, products, existingStockNumbers }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('vouchers.store'));
+        post(route('vouchers.store'), {
+            forceFormData: true,
+        });
+    };
+
+    const handleHallmarkCertificateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file.type.startsWith('image/')) {
+                setData('hallmark_certificate', file);
+            }
+        }
     };
 
     return (
@@ -339,6 +354,56 @@ export default function Create({ users, shapes, products, existingStockNumbers }
                                     ))}
                                 </select>
                                 {errors.person_in_charge && <p className="text-red-500 text-sm mt-1">{errors.person_in_charge}</p>}
+                            </div>
+                            <div>
+                                <Label htmlFor="stamping">Stamping</Label>
+                                <select
+                                    id="stamping"
+                                    value={data.stamping}
+                                    onChange={(e) => setData('stamping', e.target.value)}
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${errors.stamping ? 'border-red-500' : ''
+                                        }`}
+                                >
+                                    <option value="">Select stamping</option>
+                                    {stampingOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                </select>
+                                {errors.stamping && <p className="text-red-500 text-sm mt-1">{errors.stamping}</p>}
+                            </div>
+                        </div>
+                        <div className="mt-4">
+                            <Label htmlFor="hallmark_certificate">Hallmark Certificate</Label>
+                            <div className="mt-2">
+                                <div className="border-2 border-dashed rounded-lg p-4 border-gray-300 bg-gray-50 hover:border-gray-400">
+                                    <div className="flex flex-col items-center justify-center space-y-3">
+                                        <Upload className="h-6 w-6 text-gray-400" />
+                                        <p className="text-sm text-gray-600">Upload hallmark certificate image</p>
+                                        <p className="text-xs text-gray-500">JPEG, PNG, JPG, GIF, WEBP (Max: 10MB)</p>
+                                        <label
+                                            htmlFor="hallmark_certificate"
+                                            className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-white bg-white transition-colors"
+                                        >
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            {data.hallmark_certificate ? 'Change Image' : 'Browse Files'}
+                                        </label>
+                                        <input
+                                            id="hallmark_certificate"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleHallmarkCertificateChange}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                    {data.hallmark_certificate && (
+                                        <div className="mt-4 pt-4 border-t border-gray-200">
+                                            <p className="text-sm text-gray-600 mb-1">Selected file:</p>
+                                            <p className="text-sm font-medium text-gray-900">{data.hallmark_certificate.name}</p>
+                                            <p className="text-xs text-gray-500">{(data.hallmark_certificate.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        </div>
+                                    )}
+                                </div>
+                                {errors.hallmark_certificate && <p className="text-red-500 text-sm mt-1">{errors.hallmark_certificate}</p>}
                             </div>
                         </div>
                         <div className="mt-4">
@@ -553,7 +618,7 @@ export default function Create({ users, shapes, products, existingStockNumbers }
                             </div>
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <p className="text-sm text-gray-600">Total Weight</p>
-                                <p className="text-xl font-semibold text-gray-900">{totalWeight.toFixed(2)} ct</p>
+                                <p className="text-xl font-semibold text-gray-900">{totalWeight.toFixed(2)} ct / gms</p>
                             </div>
                         </div>
                     </Card>

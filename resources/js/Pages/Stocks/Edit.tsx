@@ -16,6 +16,7 @@ interface Stock {
     metal?: string | null
     products_used?: string | null
     product_categorization?: string | null
+    notes?: string | null
 }
 
 interface MetalWithGrams {
@@ -86,6 +87,7 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
         metal: parseMetal(stock?.metal) as MetalWithGrams,
         products_used: parseProductsUsed(stock?.products_used) as string[],
         product_categorization: stock?.product_categorization || '',
+        notes: stock?.notes || '',
         thumbnail: null as File | null,
     });
 
@@ -124,6 +126,7 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
             : (data.products_used || '');
         formData.append('products_used', productsUsedValue);
         formData.append('product_categorization', data.product_categorization || '');
+        formData.append('notes', data.notes || '');
         if (data.thumbnail) {
             formData.append('thumbnail', data.thumbnail);
         }
@@ -286,6 +289,20 @@ export default function Edit({ stock, productCategorizations }: StockEditProps) 
                                     ))}
                                 </select>
                                 {errors.product_categorization && <p className="text-red-500 text-sm mt-1">{errors.product_categorization}</p>}
+                            </div>
+
+                            <div>
+                                <Label htmlFor="notes">Notes</Label>
+                                <textarea
+                                    id="notes"
+                                    name="notes"
+                                    value={data.notes}
+                                    onChange={(e) => setData('notes', e.target.value)}
+                                    rows={4}
+                                    placeholder="Enter notes..."
+                                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${errors.notes ? 'border-red-500' : 'border-gray-300'}`}
+                                />
+                                {errors.notes && <p className="text-red-500 text-sm mt-1">{errors.notes}</p>}
                             </div>
 
                             <div>

@@ -114,7 +114,7 @@ class VoucherGroupController extends Controller
 
         $stock = DB::table('stocks')
             ->where('stock_no', $stock_no)
-            ->select(['stock_no', 'thumbnail', 'metal', 'products_used', 'product_categorization'])
+            ->select(['stock_no', 'thumbnail', 'metal', 'products_used', 'product_categorization', 'notes'])
             ->first();
 
         $summary = [
@@ -455,8 +455,15 @@ class VoucherGroupController extends Controller
         return back()->with('success', 'Voucher item usage updated.');
     }
 
-    public function complete(string $stock_no)
+    public function complete(Request $request, string $stock_no)
     {
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $notes = isset($validated['notes']) ? trim($validated['notes']) : '';
+        $notes = $notes !== '' ? $notes : null;
+
         try {
             // Check if user is authenticated
             $userId = Auth::id();
@@ -479,7 +486,7 @@ class VoucherGroupController extends Controller
             $errorCount = 0;
             $errors = [];
 
-            DB::transaction(function () use ($stock_no, $userId, &$processedCount, &$skippedCount, &$errorCount, &$errors) {
+            DB::transaction(function () use ($stock_no, $userId, $notes, &$processedCount, &$skippedCount, &$errorCount, &$errors) {
                 // Get all vouchers (excluding soft-deleted for debugging)
                 $allVouchers = Voucher::where('stock_no', $stock_no)->where('deleted_at', null)->get();
                 $vouchers = Voucher::where('stock_no', $stock_no)->where('deleted_at', null)->get();
@@ -516,7 +523,6 @@ class VoucherGroupController extends Controller
                         'stock_no' => $stock_no,
                         'total_with_deleted' => $allVouchers->count(),
                     ]);
-                    return;
                 }
 
                 foreach ($vouchers as $voucher) {
@@ -606,6 +612,11 @@ class VoucherGroupController extends Controller
                         // Continue processing other vouchers
                     }
                 }
+
+                $stock = Stock::firstOrNew(['stock_no' => $stock_no]);
+                $stock->stock_no = $stock_no;
+                $stock->notes = $notes;
+                $stock->save();
             });
 
             Log::info('VoucherGroupController::complete - Completed', [

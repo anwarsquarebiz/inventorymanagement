@@ -89,6 +89,10 @@
             <span class="info-value">{{ date('d/m/Y', strtotime($voucher->date_delivery)) }}</span>
         </div>
         <div class="info-row">
+            <span class="info-label">Stamping:</span>
+            <span class="info-value">{{ $voucher->stamping ?? '-' }}</span>
+        </div>
+        <div class="info-row">
             <span class="info-label">Status:</span>
             <span class="info-value">{{ strtoupper(str_replace('_', ' ', $voucher->status)) }}</span>
         </div>
@@ -100,6 +104,14 @@
         <div class="info-row">
             <span class="info-label">Notes:</span>
             <span class="info-value">{{ $voucher->notes }}</span>
+        </div>
+        @endif
+        @if($voucher->hallmark_certificate)
+        <div class="info-row">
+            <span class="info-label">Hallmark Certificate:</span>
+            <span class="info-value">
+                <img src="{{ public_path('storage/' . $voucher->hallmark_certificate) }}" alt="Hallmark certificate" style="max-width: 200px; margin-top: 8px;">
+            </span>
         </div>
         @endif
     </div>

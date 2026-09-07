@@ -51,6 +51,8 @@ interface Voucher {
     stock_no: string
     date_given: string
     date_delivery: string
+    stamping?: string | null
+    hallmark_certificate?: string | null
     status: string
     notes: string
     created_at: string
@@ -312,7 +314,27 @@ export default function Show({ voucher, backPage, backSearch }: VoucherShowProps
                                     <p className="text-sm text-gray-600">Person in Charge</p>
                                     <p className="font-medium text-gray-900">{voucher.person_in_charge.name}</p>
                                 </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">Stamping</p>
+                                    <p className="font-medium text-gray-900">{voucher.stamping || '-'}</p>
+                                </div>
                             </div>
+                            {voucher.hallmark_certificate && (
+                                <div className="mt-4">
+                                    <p className="text-sm text-gray-600 mb-2">Hallmark Certificate</p>
+                                    <a
+                                        href={`/storage/${voucher.hallmark_certificate}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <img
+                                            src={`/storage/${voucher.hallmark_certificate}`}
+                                            alt="Hallmark certificate"
+                                            className="max-w-md h-auto rounded-lg border border-gray-200 shadow-sm w-[200px] hover:opacity-90"
+                                        />
+                                    </a>
+                                </div>
+                            )}
                             {voucher.notes && (
                                 <div className="mt-4">
                                     <p className="text-sm text-gray-600">Notes</p>

@@ -11,6 +11,8 @@ use App\Models\VoucherItem;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Dompdf\Dompdf;
@@ -141,15 +143,22 @@ class VoucherController extends Controller
             'shapes' => $shapes,
             'products' => $products,
             'existingStockNumbers' => $existingStockNumbers,
+            'stampingOptions' => Voucher::getStampingOptions(),
         ]);
     }
 
     public function store(Request $request)
     {
+        $request->merge([
+            'stamping' => $request->filled('stamping') ? $request->stamping : null,
+        ]);
+
         $request->validate([
             'stock_no' => 'required|string|max:255',
             'date_given' => 'required|date',
             'date_delivery' => 'required|date',
+            'stamping' => ['nullable', 'string', Rule::in(Voucher::getStampingOptions())],
+            'hallmark_certificate' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'person_in_charge' => 'required|exists:users,id',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -163,11 +172,18 @@ class VoucherController extends Controller
         ]);
 
         DB::transaction(function () use ($request) {
+            $hallmarkCertificatePath = null;
+            if ($request->hasFile('hallmark_certificate')) {
+                $hallmarkCertificatePath = $request->file('hallmark_certificate')->store('vouchers/hallmark-certificates', 'public');
+            }
+
             // Create voucher
             $voucher = Voucher::create([
                 'stock_no' => $request->stock_no,
                 'date_given' => $request->date_given,
                 'date_delivery' => $request->date_delivery,
+                'stamping' => $request->stamping,
+                'hallmark_certificate' => $hallmarkCertificatePath,
                 'person_in_charge' => $request->person_in_charge,
                 'created_by' => auth()->id(),
                 'notes' => $request->notes,
@@ -269,6 +285,7 @@ class VoucherController extends Controller
             'shapes' => $shapes,
             'products' => $products,
             'existingStockNumbers' => $existingStockNumbers,
+            'stampingOptions' => Voucher::getStampingOptions(),
         ]);
     }
 
@@ -276,10 +293,16 @@ class VoucherController extends Controller
     {
         $this->authorize('update', $voucher);
 
+        $request->merge([
+            'stamping' => $request->filled('stamping') ? $request->stamping : null,
+        ]);
+
         $request->validate([
             'stock_no' => 'required|string|max:255',
             'date_given' => 'required|date',
             'date_delivery' => 'required|date',
+            'stamping' => ['nullable', 'string', Rule::in(Voucher::getStampingOptions())],
+            'hallmark_certificate' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'person_in_charge' => 'required|exists:users,id',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -295,14 +318,25 @@ class VoucherController extends Controller
         DB::transaction(function () use ($request, $voucher) {
             $oldValues = $voucher->toArray();
 
-            // Update voucher header
-            $voucher->update([
+            $updateData = [
                 'stock_no' => $request->stock_no,
                 'date_given' => $request->date_given,
                 'date_delivery' => $request->date_delivery,
+                'stamping' => $request->stamping,
                 'person_in_charge' => $request->person_in_charge,
                 'notes' => $request->notes,
-            ]);
+            ];
+
+            if ($request->hasFile('hallmark_certificate')) {
+                if ($voucher->hallmark_certificate && Storage::disk('public')->exists($voucher->hallmark_certificate)) {
+                    Storage::disk('public')->delete($voucher->hallmark_certificate);
+                }
+
+                $updateData['hallmark_certificate'] = $request->file('hallmark_certificate')->store('vouchers/hallmark-certificates', 'public');
+            }
+
+            // Update voucher header
+            $voucher->update($updateData);
 
             // Replace items (simple and safe approach)
             $voucher->items()->delete();
@@ -565,6 +599,10 @@ class VoucherController extends Controller
         DB::transaction(function () use ($voucher) {
             // Log audit before deletion
             AuditLog::log($voucher, 'DELETE', auth()->id(), $voucher->toArray());
+
+            if ($voucher->hallmark_certificate && Storage::disk('public')->exists($voucher->hallmark_certificate)) {
+                Storage::disk('public')->delete($voucher->hallmark_certificate);
+            }
 
             $voucher->delete();
         });
